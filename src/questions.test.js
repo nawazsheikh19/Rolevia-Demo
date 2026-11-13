@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {byPriority,interviewQuestions,profileVerificationQuestions} from "./questions.js";
+import {byPriority,interviewQuestions,profileVerificationQuestions,fillQuestionSet,alternativeQuestion} from "./questions.js";
 test("5 is highest priority and comes before 1",()=>{
  const checks=[{label:"Lower",weight:1,kind:"skill",matched:false},{label:"Top",weight:5,kind:"skill",matched:false},{label:"Medium",weight:3,kind:"responsibility",matched:true,evidence:"Built dashboards"}];
  assert.deepEqual([...checks].sort(byPriority).map(x=>x.label),["Top","Medium","Lower"]);
@@ -28,3 +28,31 @@ test("profile-only follow ups differ from CV questions",()=>{
  assert.equal(q[0].priority,4);
 });
 test("no LinkedIn claims means no profile-only questions",()=>assert.deepEqual(profileVerificationQuestions({newlyEvidenced:[]}),[]));
+
+test("always supplies six distinct resume questions even for a single requirement",()=>{
+ const checks=[{label:"Excel inventory forecasting",kind:"requirement",matched:false,weight:5}];
+ const questions=fillQuestionSet(checks,[],6,"resume");
+ assert.equal(questions.length,6);
+ assert.equal(new Set(questions.map(q=>q.text)).size,6);
+ assert.ok(questions.every(q=>q.text.includes("Excel inventory forecasting")));
+});
+test("X replacement avoids the deleted question and retains the planned count",()=>{
+ const checks=[{label:"Customer onboarding",kind:"responsibility",matched:true,weight:4,evidence:"Led onboarding"}];
+ const plan=fillQuestionSet(checks,[],6,"resume");
+ const removed=plan[2];
+ plan[2]=alternativeQuestion(checks,[...plan.filter((_,i)=>i!==2),removed],"resume",2);
+ assert.equal(plan.length,6);
+ assert.notEqual(plan[2].text,removed.text);
+});
+test("LinkedIn followup questions can be five and remain grounded in role requirements",()=>{
+ const checks=[{label:"Supplier logistics",kind:"responsibility",weight:4,matched:true,evidence:"Managed suppliers"}];
+ const qs=fillQuestionSet(checks,[],5,"profile");
+ assert.equal(qs.length,5);
+ assert.ok(qs.every(q=>q.text.includes("Supplier logistics")));
+});
+test("recruiter-entered question can occupy a slot without changing the plan length",()=>{
+ const qs=fillQuestionSet([],[],6,"resume");
+ qs[0]={text:"Which responsibilities would you most enjoy in this role?",source:"Recruiter"};
+ assert.equal(qs.length,6);
+ assert.equal(qs[0].source,"Recruiter");
+});
