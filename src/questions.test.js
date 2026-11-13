@@ -56,3 +56,39 @@ test("recruiter-entered question can occupy a slot without changing the plan len
  assert.equal(qs.length,6);
  assert.equal(qs[0].source,"Recruiter");
 });
+
+test("repeated requests provide 20 genuinely different alternatives for one role requirement",()=>{
+ const checks=[{label:"Pharmacy inventory control",kind:"responsibility",weight:5,matched:false}];
+ const history=[];
+ for(let i=0;i<20;i++){
+  const next=alternativeQuestion(checks,history,"resume",i);
+  assert.ok(next.text.includes("Pharmacy inventory control"),"grounding lost on "+i);
+  history.push(next);
+ }
+ assert.equal(new Set(history.map(x=>x.text)).size,20);
+});
+test("alternatives work across nontechnical professions",()=>{
+ const professions=["Classroom learning support","Hotel front desk coordination","Healthcare appointment scheduling","Budget variance analysis","Supply chain delivery","Retail store operations","Construction site reporting"];
+ for(const label of professions){
+  const checks=[{label,kind:"responsibility",matched:false,weight:4}];
+  const out=fillQuestionSet(checks,[],6,"resume");
+  assert.equal(out.length,6,label);
+  assert.equal(new Set(out.map(q=>q.text)).size,6,label);
+  assert.ok(out.every(q=>q.text.includes(label)),label);
+ }
+});
+test("removing a question does not require replacement and preserves remaining question order",()=>{
+ const checks=[{label:"Supplier coordination",kind:"responsibility",matched:false,weight:3}];
+ const plan=fillQuestionSet(checks,[],6);
+ const second=plan[1].text;
+ plan.splice(0,1);
+ assert.equal(plan.length,5);
+ assert.equal(plan[0].text,second);
+});
+test("recruiter-authored question can be added before all suggested questions",()=>{
+ const plan=fillQuestionSet([{label:"Inventory control",kind:"responsibility",weight:4}],[],6);
+ plan.unshift({source:"Recruiter",text:"What concerns would you raise in the first month?",priority:5});
+ plan.sort((a,b)=>Number(b.source==="Recruiter")-Number(a.source==="Recruiter"));
+ assert.equal(plan[0].source,"Recruiter");
+ assert.equal(plan.length,7);
+});
