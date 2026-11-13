@@ -34,7 +34,7 @@ const sampleBar=dom("div",{class:"sample-bar"},[
   const sample=SCENARIOS[examplePicker.value];
   semanticByCandidate.clear();
   data={job:sample.job,criteria:criteriaFromJob(sample.job),candidates:sample.candidates.map((candidate,i)=>({
-   ...candidate,id:crypto.randomUUID(),filename:"synthetic-"+(i+1)+".txt",linkedin:""
+   ...candidate,id:crypto.randomUUID(),filename:"synthetic-"+(i+1)+".txt",sampleLinkedIn:candidate.linkedin||"",linkedin:""
   })),selected:null,savedAt:0};
   save();alertUser(sample.label+" example loaded. Adjust criteria, then explore the shortlist.");
  },"secondary")
@@ -64,7 +64,15 @@ semanticPanel.append(button(semanticBusy?"Loading local AI model…":currentLead
  finally{semanticBusy=false;render()}
 },"secondary",semanticBusy));
 right.append(semanticPanel);
-right.append(dom("h3",{text:"Step 2 · LinkedIn enrichment"}),dom("p",{text:"Paste candidate-provided LinkedIn information. It is not scraped. The original resume ranking remains unchanged."}));const li=dom("textarea",{class:"control big",maxlength:"20000",placeholder:"Paste supplied profile information...",value:chosen.linkedin||""});right.append(li,button("Update LinkedIn assessment",()=>{const original=data.candidates.find(c=>c.id===chosen.id);original.linkedin=li.value.slice(0,20000);save();alertUser("LinkedIn compared with the résumé. Review the new evidence and follow-up questions.")}));if(chosen.linkedin?.trim()){
+right.append(dom("h3",{text:"Step 2 · LinkedIn enrichment"}),dom("p",{text:"Paste candidate-provided LinkedIn information. It is not scraped. The original resume ranking remains unchanged."}));const li=dom("textarea",{class:"control big",maxlength:"20000",placeholder:"Paste supplied profile information...",value:chosen.linkedin||""});right.append(li);
+if(chosen.sampleLinkedIn&&!chosen.linkedin){
+ right.append(button("Try fictional LinkedIn profile",()=>{
+  const original=data.candidates.find(c=>c.id===chosen.id);
+  original.linkedin=original.sampleLinkedIn;
+  save();alertUser("Fictional LinkedIn information added. Review how the evidence changed.");
+ },"secondary"));
+}
+right.append(button("Update LinkedIn assessment",()=>{const original=data.candidates.find(c=>c.id===chosen.id);original.linkedin=li.value.slice(0,20000);save();alertUser("LinkedIn compared with the résumé. Review the new evidence and follow-up questions.")}));if(chosen.linkedin?.trim()){
  const delta=profileDelta(chosen,data.criteria),card=dom("div",{class:"profile-delta"});
  card.append(dom("h3",{text:"What changed after LinkedIn?"}),
  dom("div",{class:"delta-counts"},[
