@@ -34,3 +34,28 @@ test('synthetic senior engineer has broader evidence than unrelated profile',()=
  assert.ok(assess(SAMPLE[0],criteria).percent>assess(SAMPLE[2],criteria).percent);
 });
 test('empty rubric has no numeric score',()=>assert.equal(assess(SAMPLE[0],[]).percent,null));
+
+test('extracts unfamiliar tools from job requirement bullets',()=>{
+ const jd='Senior Analyst\nRequirements:\n- Experience with Looker, Snowflake, and dbt\n- Build weekly forecasting dashboards\n- Collaborate with the finance team\nPreferred:\n- Familiarity with HubSpot';
+ const criteria=criteriaFromJob(jd);
+ for(const name of ['Looker','Snowflake','dbt','HubSpot'])assert.ok(criteria.some(x=>x.label===name),name);
+ assert.ok(criteria.some(x=>x.kind==='responsibility'&&/forecasting dashboards/i.test(x.label)));
+ assert.ok(criteria.find(x=>x.label==='HubSpot').priority==='preferred');
+});
+test('extracts new responsibilities and language criteria from narrative prose',()=>{
+ const jd='Customer Support Manager. You will lead a distributed team and deliver training programs. Proven experience handling customer escalations and managing SLAs. Fluent in German preferred.';
+ const criteria=criteriaFromJob(jd);
+ assert.ok(criteria.some(x=>/distributed team/i.test(x.label)));
+ assert.ok(criteria.some(x=>/customer escalations/i.test(x.label)));
+ assert.ok(criteria.some(x=>/German/i.test(x.label)));
+});
+test('does not derive hiring requirements from benefits or protected characteristics',()=>{
+ const jd='Benefits:\n- Competitive package and holiday allowance\n- Equal opportunity: age, gender, nationality, disability\nRequirements:\n- Build weekly forecasting dashboards';
+ const criteria=criteriaFromJob(jd);
+ assert.ok(criteria.some(x=>/forecasting dashboards/i.test(x.label)));
+ assert.ok(criteria.every(x=>!/holiday allowance|age|gender|nationality|disability/i.test(x.label)));
+});
+test('does not invent job criteria from uninformative prose',()=>{
+ const criteria=criteriaFromJob('We offer a competitive package. Apply now. Our mission is to help everyone.');
+ assert.equal(criteria.length,0);
+});
