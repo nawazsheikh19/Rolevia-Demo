@@ -40,11 +40,15 @@ Requirement evidence appears **highest priority first** in the shortlist. *Requi
 
 Questions appear on the **CV-only review before adding LinkedIn**. They vary by requirement type (technical skill, responsibility, experience, qualification and industry), reference the submitted evidence where available, and address higher-priority requirements first. LinkedIn enrichments are displayed as **Before: CV-only → After: CV + LinkedIn**, listing newly evidenced claims, previously supported claims, and gaps requiring verification. New profile claims receive separate follow-up questions. A missing LinkedIn profile is not a negative signal.
 
-The **Draft alternative with free AI** action can optionally download the Apache-2.0 FLAN-T5 Small model to generate an additional interview-question draft within the browser. Its output is unverified and must be reviewed. The normal question generator needs no model download.
+**Another question** supplies a different role-grounded question immediately, without downloading a model. **Try LLM draft (experimental)** offers a separately confirmed, optional browser-local Qwen2.5-0.5B-Instruct download (quantized weights can be roughly 0.8 GB). AI-generated text is an editable draft, not verified evidence, and must be reviewed by the recruiter.
 
 ## Optional free AI
 
 Select **Explore related evidence with free AI** on a candidate to download a small Hugging Face embedding model and search the résumé for passages with similar meaning to uncovered job requirements. It does **not** verify qualifications, adjust the match percentage, or make hiring recommendations. Using this feature downloads model files from Hugging Face/its delivery network; it processes résumé text locally in the browser. Use only synthetic sample profiles in this version.
+
+## Synthetic upload acknowledgement
+
+Before using the CV file upload control, the recruiter must affirm that documents are **fictional/synthetic and contain no real applicant information**. This is a demonstration safeguard, not a legal privacy guarantee. Sample workspaces can be used without uploading any documents.
 
 ## Privacy and limitations
 
@@ -89,11 +93,11 @@ GitHub Pages deployment is handled by `.github/workflows/deploy.yml`; ensure the
 ## Recruiter interview and shortlist workflow
 
 1. Open **Candidate ranking**, select a candidate and review requirements ordered by priority (5 highest, 1 lowest).
-2. See **six CV-only interview questions**. Each has an editable text field, **×** removes it and automatically supplies a new job-grounded alternative, and **Generate alternative** attempts an optional local language model with a usable non-network fallback. Recruiters can replace any question with their own.
+2. See **six CV-only interview questions**. Each has an editable text field. **× deletes a question without replacing it**. **Another question** replaces only the selected suggested question with an unused, job-grounded alternative; previous versions are tracked to avoid an immediate repeat. **Add suggested question** explicitly adds another suggestion. Recruiter-authored questions are added in an amber-highlighted section at the very top rather than displacing existing suggestions.
 3. In **Stage 2**, paste candidate-provided LinkedIn text if available. Clear before/after percentages describe *documented weighted requirements*, not validated ability. The labels mean: **new LinkedIn-only requirement evidence**, **already supported by the CV**, and **not documented in either source**.
-4. If LinkedIn is provided, **five follow-up questions** appear, emphasizing profile-only claims first, then outstanding job criteria. Each can be edited, replaced or written by the recruiter.
+4. If LinkedIn is provided, **five follow-up questions** appear, emphasizing profile-only claims first, then outstanding job criteria. They can be edited, deleted with ×, or individually refreshed; recruiter-authored priority questions can be added above them.
 5. Select **Choose candidate** for as many candidates as needed. Open **Shortlist** to see selected versus other applicants. The selected group is ordered by the percentage of weighted requirement coverage based on the CV and optional LinkedIn; non-selected candidates remain available for human review.
 6. Use **Delete other candidates** in the Shortlist tab, with confirmation, only after the desired candidates are selected. This retains the selected candidates and job rubric. **Delete entire batch** in the upload tab clears everyone while preserving the job rubric.
 
 ### Local question model limitations
-**Xenova/flan-t5-small** is a small optional browser-side model, not a dedicated hiring-interview model. External model files and WASM runtime assets must load for it to work; network/CSP blockers can prevent that. The fallback question bank generates alternatives locally without making a network request and labels the source. AI output can be unreliable or hallucinate, so recruiters must verify all questions and avoid protected characteristics; no automatic hiring decisions are made. The demo uses fictional profiles only.
+**onnx-community/Qwen2.5-0.5B-Instruct** is an optional ONNX / Transformers.js browser-side instruct model, not a dedicated hiring-interview model. It is a comparatively large download; model hosting, browser memory, CDN and WASM runtime availability may prevent it from loading. It receives only a sanitized **job requirement**, not CV text, LinkedIn text or recruiter-written questions. Normal “Another question” replacements are generated locally without any network request. No model output is guaranteed free of hallucinations; the optional AI uses output checks and falls back to job-grounded templates if it fails. AI output can be unreliable or hallucinate, so recruiters must verify all questions and avoid protected characteristics; no automatic hiring decisions are made. The demo uses fictional profiles only.
