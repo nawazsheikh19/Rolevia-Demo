@@ -10,14 +10,14 @@ import {SCENARIOS} from "./scenarios.js";
 import {MOCK_CATALOG,mockListing} from "./mock-catalog.js";
 import "./style.css";
 pdfjs.GlobalWorkerOptions.workerSrc=worker;
-const DB="rolevia-demo",DAY=86400000,root=document.getElementById("app");
+const DB="rolevia-demo",RETENTION_MS=6*60*60*1000,root=document.getElementById("app");
 let data={job:"",criteria:[],candidates:[],selected:null,syntheticConfirmed:false,savedAt:0};
 let view="setup",active=null,notice="",saveTimer;
 const semanticByCandidate=new Map();let semanticBusy=false;let questionAiBusy=false;
 const html=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore("records");r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
-async function database(mode,record){const db=await openDB();return new Promise((resolve,reject)=>{const tx=db.transaction("records",mode==="read"?"readonly":"readwrite");const store=tx.objectStore("records");const r=mode==="read"?store.get("workspace"):mode==="delete"?store.delete("workspace"):store.put(record,"workspace");r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);tx.oncomplete=()=>db.close()})}
-function save(){clearTimeout(saveTimer);saveTimer=setTimeout(async()=>{data.savedAt=Date.now();try{await database("write",{...data,expires:data.savedAt+DAY})}catch{notice="This browser blocked local storage. Data will not persist.";render()}},250)}
+async function database(mode,record){const db=await openDB();return new Promise((resolve,reject)=>{const tx=db.transaction("records",mode==="read"?"readonly":"readwrite");const store=tx.objectStore("records");const r=mode==="read"?store.get("workspace"):mode==="delete"?store.delete("workspace"):store.put(record,"workspace");let result; r.onsuccess=()=>{result=r.result};tx.oncomplete=()=>{db.close();resolve(result)};tx.onerror=()=>{db.close();reject(tx.error||new Error("Storage transaction failed"))};tx.onabort=()=>{db.close();reject(tx.error||new Error("Storage transaction aborted"))}})}
+function save(){clearTimeout(saveTimer);saveTimer=setTimeout(async()=>{data.savedAt=Date.now();try{await database("write",{...data,expires:data.savedAt+RETENTION_MS})}catch{notice="This browser blocked local storage. Data will not persist.";render()}},250)}
 function alertUser(s){notice=s;render()}
 function selectedIds(){return Array.isArray(data.selectedIds)?data.selectedIds:(data.selected?[data.selected]:[])}
 function toggleSelected(id){const ids=new Set(selectedIds());if(ids.has(id))ids.delete(id);else ids.add(id);data.selectedIds=[...ids];data.selected=null;save();render()}
@@ -28,7 +28,7 @@ function button(label,fn,cls="secondary",disabled=false){return dom("button",{cl
 function section(title,description){return dom("section",{class:"panel"},[dom("h2",{text:title}),dom("p",{class:"muted",text:description})])}
 function field(title,input){return dom("label",{class:"field"},[dom("span",{text:title}),input])}
 function noticeBar(){return notice?dom("div",{class:"notice",role:"status","aria-live":"polite"},[dom("span",{text:notice}),button("×",()=>{notice="";render()},"plain")]):dom("span")}
-function render(){root.replaceChildren();const layout=dom("div",{class:"layout"}),sidebar=dom("aside",{class:"sidebar"}),main=dom("main",{class:"main"});sidebar.append(dom("div",{class:"brand",text:"Rolevia."}),button("Job & uploads",()=>{view="setup";render()},view==="setup"?"nav active":"nav"),button("Candidate ranking ("+data.candidates.length+")",()=>{view="results";render()},view==="results"?"nav active":"nav"),button("Shortlist ("+selectedIds().length+")",()=>{view="shortlist";render()},view==="shortlist"?"nav active":"nav"),button("Privacy & retention",()=>{view="privacy";render()},view==="privacy"?"nav active":"nav"),dom("div",{class:"sidefoot",text:"Browser-only prototype • Local data • 24-hour expiry"}));main.append(dom("header",{class:"header"},[dom("strong",{text:"Rolevia / Recruiter workspace"}),dom("span",{class:"badge",text:"PILOT PREVIEW"})]));const content=dom("div",{class:"content"});content.append(noticeBar());if(view==="setup")renderSetup(content);else if(view==="results")renderResults(content);else if(view==="shortlist")renderShortlist(content);else renderPrivacy(content);main.append(content,dom("footer",{class:"footer",text:"Human-reviewed evidence assistance • Not an automated employment decision"}));layout.append(sidebar,main);root.append(layout)}
+function render(){root.replaceChildren();const layout=dom("div",{class:"layout"}),sidebar=dom("aside",{class:"sidebar"}),main=dom("main",{class:"main"});sidebar.append(dom("div",{class:"brand",text:"Rolevia."}),button("Job & uploads",()=>{view="setup";render()},view==="setup"?"nav active":"nav"),button("Candidate ranking ("+data.candidates.length+")",()=>{view="results";render()},view==="results"?"nav active":"nav"),button("Shortlist ("+selectedIds().length+")",()=>{view="shortlist";render()},view==="shortlist"?"nav active":"nav"),button("Privacy & retention",()=>{view="privacy";render()},view==="privacy"?"nav active":"nav"),dom("div",{class:"sidefoot",text:"Browser-only prototype • Local data • 6-hour expiry"}));main.append(dom("header",{class:"header"},[dom("strong",{text:"Rolevia / Recruiter workspace"}),dom("span",{class:"badge",text:"PILOT PREVIEW"})]));const content=dom("div",{class:"content"});content.append(noticeBar());if(view==="setup")renderSetup(content);else if(view==="results")renderResults(content);else if(view==="shortlist")renderShortlist(content);else renderPrivacy(content);main.append(content,dom("footer",{class:"footer",text:"Human-reviewed evidence assistance • Not an automated employment decision"}));layout.append(sidebar,main);root.append(layout)}
 function heading(parent,eyebrow,title,detail){parent.append(dom("div",{class:"eyebrow",text:eyebrow}),dom("h1",{text:title}),dom("p",{class:"intro",text:detail}))}
 function renderSetup(container){heading(container,"01 / ASSESSMENT SETUP","Find the right talent.","Import a role and up to 30 resumes. Review skills, experience, responsibilities, education and industry requirements before comparing candidates.");const mockRole=dom("select",{class:"control mock-role","aria-label":"Mock profession"});
 for(const [key,role] of Object.entries(MOCK_CATALOG))mockRole.append(dom("option",{value:key,text:role.label}));
@@ -112,7 +112,7 @@ const fileinput=dom("input",{type:"file",accept:".pdf,.docx,.txt",multiple:"",cl
   data.candidates=[];data.selected=null;data.selectedIds=[];data.questionSets={};active=null;semanticByCandidate.clear();
   data.savedAt=Date.now();
   try{
-   await database("write",{...data,expires:data.savedAt+DAY});
+   await database("write",{...data,expires:data.savedAt+RETENTION_MS});
    alertUser("Deleted "+count+" candidates. Your job description and criteria are ready for a new batch.");
   }catch(error){alertUser("Candidate list cleared in this tab, but browser storage deletion could not be confirmed. Use Privacy & retention to remove saved data before closing.");}
  },"danger",data.candidates.length===0)
@@ -309,11 +309,53 @@ function renderShortlist(container){
  },"danger",!selected.length||selected.length===list.length));
 }
 
-function renderPrivacy(container){heading(container,"03 / PRIVACY","Temporary data controls","Everything in this pilot stays in the recruiter's browser. No production candidate database is connected.");const card=section("Local retention","Saved candidates: "+data.candidates.length+". Last change: "+(data.savedAt?new Date(data.savedAt).toLocaleString():"none")+".");card.append(dom("p",{text:"Records expire 24 hours after the last edit. Expired information is removed when the application is opened or checked while open. IndexedDB is not application-encrypted; files may remain in browser backups or downloads outside Rolevia."}),button("Delete all workspace data",async()=>{if(!confirm("Delete all local data?"))return;clearTimeout(saveTimer);semanticByCandidate.clear();data.questionSets={};data={job:"",criteria:[],candidates:[],selected:null,savedAt:0};await database("delete").catch(()=>{});view="setup";alertUser("Workspace removed.")},"danger"));const legal=section("Before using actual applicants","This demo is not GDPR-certified and is not validated as an employment screening system.");legal.append(dom("p",{text:"Production requires lawful basis, transparency, rights handling, employer-defined retention, tenant isolation, secure access, appropriate hosting and impact assessment where required. LinkedIn data must be obtained lawfully. Human review and fairness testing are mandatory design priorities."}));container.append(card,legal)}
+function emptyWorkspace(){return {job:"",criteria:[],candidates:[],selected:null,selectedIds:[],questionSets:{},syntheticConfirmed:false,savedAt:0}}
+async function clearWorkspace(){
+ clearTimeout(saveTimer);saveTimer=null;semanticByCandidate.clear();active=null;
+ // Clear visible in-memory applicant data, then await IndexedDB transaction commit.
+ data=emptyWorkspace();view="setup";
+ try{
+  await database("delete");
+  alertUser("All Rolevia workspace data was deleted from this browser's application storage.");
+  return true;
+ }catch(e){
+  alertUser("Workspace cleared from this tab, but browser storage deletion could not be confirmed. Clear site data in browser settings before leaving this device.");
+  return false;
+ }
+}
+function renderPrivacy(container){
+ heading(container,"04 / PRIVACY","Temporary data controls","All active workspace records are stored only in this browser; no Rolevia applicant database is connected.");
+ const expiration=data.savedAt?new Date(data.savedAt+RETENTION_MS).toLocaleString():"No saved workspace";
+ const card=section("Delete immediately or expire after six hours","Saved candidates: "+data.candidates.length+". Automatic expiry: "+expiration+".");
+ card.append(dom("p",{text:"Choose Delete all workspace data to remove the job description, candidate CVs, LinkedIn text, questions, and shortlist immediately. Otherwise the workspace expires six hours after the last saved change. If the tab is closed, expired records are removed the next time Rolevia opens. This deletes Rolevia's IndexedDB workspace, not any original uploaded files, model caches, browser backups or exported downloads."}),
+ button("Delete all workspace data",async()=>{
+  if(!confirm("Permanently delete this browser's entire Rolevia workspace now? This includes all CV text, LinkedIn profiles, the job description, interview questions and shortlist. This cannot be undone."))return;
+  await clearWorkspace();
+ },"danger"));
+ const legal=section("Before using actual applicants","This demo is not GDPR-certified and is not validated as an employment screening system.");
+ legal.append(dom("p",{text:"Use fictional data only. Production requires lawful basis, transparency, rights handling, secure access, approved retention, and an appropriate risk or impact assessment. Local browser deletion does not delete files outside Rolevia."}));
+ container.append(card,legal);
+}
 async function parseFile(file){if(!file)throw Error("Choose a document.");if(file.size>5*1024*1024)throw Error("File exceeds 5MB.");const ext=file.name.split(".").pop().toLowerCase();if(!["txt","pdf","docx"].includes(ext))throw Error("Only PDF, DOCX and TXT are supported.");let text="";if(ext==="txt")text=await file.text();else if(ext==="docx")text=(await mammoth.extractRawText({arrayBuffer:await file.arrayBuffer()})).value;else{const bytes=new Uint8Array(await file.arrayBuffer());if(new TextDecoder().decode(bytes.slice(0,5))!=="%PDF-")throw Error("Not a valid PDF.");const doc=await pdfjs.getDocument({data:bytes}).promise;if(doc.numPages>35)throw Error("PDF exceeds 35 pages.");for(let i=1;i<=doc.numPages;i++){const page=await doc.getPage(i);text+=(await page.getTextContent()).items.map(x=>x.str||"").join(" ")+"\n"}await doc.destroy()}if(!text.trim())throw Error("No selectable text found. Image-only scans are unsupported.");return text.slice(0,60000)}
 async function upload(files){
  if(!data.syntheticConfirmed){alertUser("Before uploading, confirm that all CVs are fictional and contain no real personal data.");return}
  let ok=0,errors=[];for(const file of files.slice(0,Math.max(0,30-data.candidates.length))){try{const resume=await parseFile(file);data.candidates.push({id:crypto.randomUUID(),name:file.name.replace(/\.[^.]+$/,"").replace(/[_-]+/g," ").slice(0,100),filename:file.name,resume,linkedin:""});ok++}catch(e){errors.push(file.name+": "+e.message)}}save();alertUser(ok+" resume(s) added. "+errors.join("; "))}
-async function boot(){try{const stored=await database("read");if(stored?.expires>Date.now()){data={job:stored.job||"",criteria:stored.criteria||[],candidates:stored.candidates||[],selected:stored.selected||null,selectedIds:Array.isArray(stored.selectedIds)?stored.selectedIds:(stored.selected?[stored.selected]:[]),questionSets:stored.questionSets||{},syntheticConfirmed:!!stored.syntheticConfirmed,savedAt:stored.savedAt||0};if(data.candidates.length)view="results"}else if(stored){await database("delete");notice="Expired records removed."}}catch{notice="Browser storage unavailable."}render()}
-setInterval(async()=>{if(data.savedAt&&Date.now()>data.savedAt+DAY){await database("delete").catch(()=>{});clearTimeout(saveTimer);data={job:"",criteria:[],candidates:[],selected:null,savedAt:0};view="setup";alertUser("24-hour retention elapsed. Workspace cleared.")}},60000);
+async function boot(){
+ try{
+  const stored=await database("read");
+  // Enforce the NEW 6-hour limit even on records written by older 24-hour builds.
+  const expires=stored?Math.min(Number(stored.expires)||0,(Number(stored.savedAt)||0)+RETENTION_MS):0;
+  if(stored&&expires>Date.now()){
+   data={job:stored.job||"",criteria:stored.criteria||[],candidates:stored.candidates||[],selected:stored.selected||null,selectedIds:Array.isArray(stored.selectedIds)?stored.selectedIds:(stored.selected?[stored.selected]:[]),questionSets:stored.questionSets||{},syntheticConfirmed:!!stored.syntheticConfirmed,savedAt:stored.savedAt||0};
+   if(data.candidates.length)view="results";
+  }else if(stored){await database("delete");notice="Expired workspace records deleted."}
+ }catch{notice="Browser storage unavailable. Please use fictional data only."}
+ render();
+}
+setInterval(async()=>{
+ if(data.savedAt&&Date.now()>=data.savedAt+RETENTION_MS){
+  await clearWorkspace();
+  notice="Six-hour automatic retention elapsed. Workspace cleared.";render();
+ }
+},60000);
 boot();
