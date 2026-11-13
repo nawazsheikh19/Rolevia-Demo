@@ -18,7 +18,7 @@ This is a free evaluation preview, **not a live recruitment product**. Use ficti
 
 ## Priority weights and evidence order
 
-Each extracted job requirement has an editable **priority weight from 1 to 5**:
+Each extracted job requirement has an editable **priority weight from 1 to 5**. A local, explainable job-context classifier suggests the dropdown value from the surrounding JD wording: **must have/essential → 5**, **required → 4**, **preferred/nice to have → 2**, and **ambiguous → 3**. These are suggestions, not a validated hiring or language model; recruiters can change the weight manually. The extracted-criteria list now displays only the category label above the requirement, so there is no duplicate stale priority text.\n\nPriority scale:
 
 - **5 = Highest priority** — most influential in the evidence coverage percentage.
 - **4 = High**, **3 = Medium**, **2 = Low**, **1 = Lowest**.
@@ -101,6 +101,9 @@ GitHub Pages deployment is handled by `.github/workflows/deploy.yml`; ensure the
 
 
 ## Mock data test lab — no applicant files needed
+
+The chosen mock profession and job listing now remain selected while navigating the app, rather than returning to the first Machine Learning listing. Each profession remains selectable through the **Profession** dropdown, with three distinct job examples. On the shortlist, Review and selection controls have a dedicated spaced action row.
+
 
 The **Mock test data** section at the top of **Job & uploads** supports nine professional families: machine learning/GenAI, operations and supply chain, customer success, finance, healthcare administration, marketing, hospitality, construction, and sales.
 
