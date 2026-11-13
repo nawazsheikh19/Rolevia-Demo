@@ -96,7 +96,7 @@ function genericCriteria(text,existing){
   for(const [label,aliases] of Object.entries(extendedSkills)){
    if([label,...aliases].some(t=>phrase(line,t)))add(label,"skill",[label,...aliases],preferred,line);
   }
-  if(!item.strict&&!cue.test(line))continue;
+  if(!item.strict&&!cue.test(line)&&!/^(?:lead|build|develop|design|manage|deliver|maintain|implement|create|own|mentor|collaborate|troubleshoot|optimize|analyse|analyze|fluent in|proven experience|experienced with)\b/i.test(line))continue;
   if(/^requirements?:|^qualifications?:|^responsibilities?:/i.test(line))continue;
   if(/^experience in (?:financial services|healthcare|e-commerce|saas) is (?:desirable|preferred)/i.test(line))continue;
   const parts=line.split(/[,;]|\s+(?:and|or)\s+(?=[A-Z][A-Za-z0-9+#/. ]{1,35}(?:[,;.]|$))/);
@@ -108,12 +108,13 @@ function genericCriteria(text,existing){
     .replace(/^(?:proven |strong |solid |deep |hands.on |excellent |good |advanced )?(?:experience|proficiency|expertise|familiarity|knowledge|understanding|background|skills?)\s+(?:with|in|of|using|at)\s+/i,"")
     .replace(/^(?:must have|should have|required to|responsible for|ability to|able to)\s+/i,"")
     .replace(/^and\s+/i,"")
+    .replace(/^experienced with\s+/i,"")
     .replace(/\s+(?:preferred|desirable|required|essential|is desirable|is preferred)$/i,"");
    if(/^\b(?:at least|minimum|up to)\s+\d+\b/i.test(part)||/^\d+\s*\+?\s*years?/i.test(part))continue;
    if(part.length<4||part.length>105||!/[a-z]{3}/i.test(part))continue;
    const tokens=part.toLowerCase().match(/[a-z][a-z0-9+#/-]*/g)||[];
    const meaningful=tokens.filter(t=>!stop.test(t));
-   if(meaningful.length<2)continue;
+   if(meaningful.length<2&&!(/^[A-Z][A-Za-z0-9+#.]{2,24}$/.test(part)&&/\b(?:experience with|proficiency in|expertise in|familiarity with|experienced with)\b/i.test(line)))continue;
    // Known dictionary entries already cover the exact short items.
    if(existing.some(c=>c.aliases?.some(a=>normalize(a)===normalize(part))))continue;
    if(/^(?:bachelor|master|phd|degree)\b/i.test(part))continue;
