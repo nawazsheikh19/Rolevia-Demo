@@ -56,3 +56,21 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .stage-comparison span{font-size:11px;color:#6a8281}
 .stage-arrow{text-align:center;font-size:21px!important;color:#089487!important}
 @media(max-width:550px){.priority-scale{justify-content:flex-start;column-gap:13px}.stage-comparison{gap:3px}.stage-comparison strong{font-size:23px}}
+
+/* Recruiter controls: reliable in-page editing, replacement and shortlist comparison. */
+.question-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.question-head .plain{margin:0;padding:2px 8px;font-size:20px;color:#a23649;border:1px solid #edcbd0;border-radius:6px;line-height:1.2}
+.question-edit{min-height:64px!important;height:auto!important;resize:vertical;font-size:13px;line-height:1.5}
+.question-row .secondary{font-size:12px;padding:8px 12px}
+.questions-panel .safe{margin:12px 0}
+.questions-panel select.control{max-width:300px}
+.shortlist-summary{border:1px solid #cfe6de;background:#f2faf7;border-radius:13px;padding:16px 18px;margin-bottom:22px}
+.shortlist-summary strong{font-size:19px;color:#125e52}
+.shortlist-summary p{margin-bottom:0}
+.shortlist-summary+.columns{align-items:start}
+.shortlist-summary+.columns .candidate{cursor:default}
+.shortlist-summary+.columns .candidate:hover{background:#fff}
+.explain-metric{display:flex;align-items:center;gap:13px;background:white;border:1px solid #d5e9e2;padding:12px;margin:8px 0;border-radius:10px}
+.explain-metric strong{font-size:23px;min-width:35px;text-align:center;color:#087e71}
+.explain-metric p{font-size:12px;color:#435e63;margin:0}
+@media(max-width:600px){.question-head{align-items:flex-start}.shortlist-summary+.columns{grid-template-columns:1fr}.explain-metric{align-items:flex-start}}
