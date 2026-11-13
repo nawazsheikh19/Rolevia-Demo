@@ -97,13 +97,18 @@ function genericCriteria(text,existing){
    if([label,...aliases].some(t=>phrase(line,t)))add(label,"skill",[label,...aliases],preferred,line);
   }
   if(!item.strict&&!cue.test(line))continue;
+  if(/^requirements?:|^qualifications?:|^responsibilities?:/i.test(line))continue;
+  if(/^experience in (?:financial services|healthcare|e-commerce|saas) is (?:desirable|preferred)/i.test(line))continue;
   const parts=line.split(/[,;]|\s+(?:and|or)\s+(?=[A-Z][A-Za-z0-9+#/. ]{1,35}(?:[,;.]|$))/);
   for(let part of parts){
    part=cleanRequirement(part)
+    .replace(/^.*?\b(?:you will|you\x27ll)\s+(?=(?:lead|build|develop|design|manage|deliver|own|maintain|create|implement)\b)/i,"")
+    .replace(/^.*?\b(?:ability to)\s+(?=(?:troubleshoot|build|lead|design|communicate|manage|deliver|solve)\b)/i,"")
     .replace(/^(?:\d+\+?\s*years?\s+(?:of\s+)?(?:experience\s+)?(?:with|in|using)\s+)/i,"")
     .replace(/^(?:proven |strong |solid |deep |hands.on |excellent |good |advanced )?(?:experience|proficiency|expertise|familiarity|knowledge|understanding|background|skills?)\s+(?:with|in|of|using|at)\s+/i,"")
     .replace(/^(?:must have|should have|required to|responsible for|ability to|able to)\s+/i,"")
-    .replace(/^and\s+/i,"");
+    .replace(/^and\s+/i,"")
+    .replace(/\s+(?:preferred|desirable|required|essential|is desirable|is preferred)$/i,"");
    if(/^\b(?:at least|minimum|up to)\s+\d+\b/i.test(part)||/^\d+\s*\+?\s*years?/i.test(part))continue;
    if(part.length<4||part.length>105||!/[a-z]{3}/i.test(part))continue;
    const tokens=part.toLowerCase().match(/[a-z][a-z0-9+#/-]*/g)||[];
@@ -112,6 +117,7 @@ function genericCriteria(text,existing){
    // Known dictionary entries already cover the exact short items.
    if(existing.some(c=>c.aliases?.some(a=>normalize(a)===normalize(part))))continue;
    if(/^(?:bachelor|master|phd|degree)\b/i.test(part))continue;
+   if(/\b(?:years? of experience|financial services is desirable|work authorization)\b/i.test(part))continue;
    const responsibility=/^(?:design|build|develop|maintain|implement|lead|manage|deliver|own|coordinate|mentor|optimize|improve|support|create|analyze|analyse|collaborate|communicate|drive|deploy|architect|evaluate)\b/i.test(part);
    add(part,responsibility?"responsibility":"requirement",[part],preferred,line);
   }
