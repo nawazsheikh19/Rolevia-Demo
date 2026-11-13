@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {phrase,criteriaFromJob,assess,SAMPLE,SAMPLE_JD} from './matching.js';
+import {SCENARIOS} from './scenarios.js';
 
 test('skill boundary prevents Java / JavaScript confusion',()=>{assert.equal(phrase('JavaScript','Java'),false);assert.equal(phrase('Java','Java'),true)});
 test('job extracts several job-related dimensions',()=>{
@@ -58,4 +59,13 @@ test('does not derive hiring requirements from benefits or protected characteris
 test('does not invent job criteria from uninformative prose',()=>{
  const criteria=criteriaFromJob('We offer a competitive package. Apply now. Our mission is to help everyone.');
  assert.equal(criteria.length,0);
+});
+
+test('example workspaces cover multiple industries',()=>{
+ assert.deepEqual(Object.keys(SCENARIOS).sort(),['account','ml','operations']);
+ for(const [key,scenario] of Object.entries(SCENARIOS)){
+  assert.ok(criteriaFromJob(scenario.job).length>=3,key);
+  assert.equal(scenario.candidates.length,3,key);
+  assert.ok(scenario.candidates.every(c=>c.resume&&c.name),key);
+ }
 });
