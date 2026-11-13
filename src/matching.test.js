@@ -62,7 +62,7 @@ test('does not invent job criteria from uninformative prose',()=>{
 });
 
 test('example workspaces cover multiple industries',()=>{
- assert.deepEqual(Object.keys(SCENARIOS).sort(),['account','ml','operations']);
+ for(const name of ['account','ml','operations','finance','nursingAdmin','marketing','hospitality','construction','sales'])assert.ok(SCENARIOS[name],name);
  for(const [key,scenario] of Object.entries(SCENARIOS)){
   assert.ok(criteriaFromJob(scenario.job).length>=3,key);
   assert.equal(scenario.candidates.length,3,key);
