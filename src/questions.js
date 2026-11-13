@@ -113,52 +113,29 @@ export function profileVerificationQuestions(delta,{limit=4}={}){
  * requirement-grounded variant. No speculative candidate achievements.
  */
 export function alternativeQuestion(checks,existing=[],stage="resume",attempt=0){
- const ordered=[...(checks||[])].sort((a,b)=>stage==="profile"?((b.source==="LinkedIn")-(a.source==="LinkedIn")||byPriority(a,b)):byPriority(a,b));
- const used=new Set(existing.map(q=>String(q.text||"").trim().toLowerCase()));
+ const ordered=[...(checks||[])].sort((a,b)=>(stage==="profile"?Number(b.source==="LinkedIn")-Number(a.source==="LinkedIn"):0)||byPriority(a,b));
+ const norm=v=>String(v||"").trim().toLowerCase().replace(/\s+/g," ");
+ const used=new Set(existing.map(q=>norm(q.text)));
+ const patterns=["What practical experience do you have that relates to {label}?","Can you describe a recent example relevant to {label} and explain your contribution?","Which responsibility from previous work is closest to {label}?","What would you want to clarify about {label} before starting?","How would you approach a new assignment involving {label}?","What lessons from prior work would you bring to {label}?","Which part of {label} would require the most collaboration?","How would you plan work connected to {label}?","Which outcome would help us understand your experience with {label}?","What obstacles could arise when handling {label}, and how would you respond?","Where would you look for guidance when dealing with {label}?","How would you know work involving {label} had been successful?","What feedback have you received about work relevant to {label}?","Can you describe a decision you made in an assignment related to {label}?","What would you do differently if you revisited work related to {label}?","What other skills have you used alongside {label}?","How have you adapted when circumstances changed around {label}?","What experience from another industry could transfer to {label}?","Which tools or processes would you expect to use for {label}, and why?","How would you explain your approach to {label} to a colleague outside your specialty?","What would a successful first month working on {label} look like?","How would you prioritize tasks related to {label} alongside other deadlines?","How would you identify a problem early in work related to {label}?","What is one example of communicating results associated with {label}?","What would you want to learn about {label} from the current team?","Which previous project would make you most prepared for {label}?","What might make {label} challenging in this particular role?","What kind of support would help you contribute to {label} effectively?","How would you handle uncertainty while working on {label}?","Which improvements could you suggest to a process involving {label}?"];
+ const linkedin=["The supplied LinkedIn profile mentions {label}. What example and dates support it?","What context can you provide for the LinkedIn information on {label}?","Which parts of the LinkedIn statement about {label} reflect your own work?","What would you like us to verify about the profile information on {label}?","How does the profile information about {label} relate to your recent role?"];
+ const general=["Which responsibilities in the job description relate most closely to your previous work?","What kind of work example would help us understand your approach to this job?","What would you clarify about this role before deciding whether it is a good fit?","Which past assignment best illustrates how you could contribute to this position?","What would you like to learn about the responsibilities of this position?","How do you typically collaborate when starting a new assignment?"];
+ const index=Math.max(0,Math.floor(Number(attempt)||0));
  if(!ordered.length){
-  // Neutral, non-evaluative prompts when the JD has no extractable criteria.
-  const prompts=[
-   "Which responsibilities from this job description align most closely with your previous work?",
-   "What example from your previous work would help us understand your approach to this role?",
-   "Which part of the advertised role would you need to learn more about before starting?",
-   "What would you ask the team to clarify about the responsibilities in this job description?",
-   "What recent work are you proud of that you believe is relevant to this role?",
-   "How would you describe the type of work you most enjoy in relation to this position?"
-  ];
-  const eligible=prompts.find(p=>!used.has(p.toLowerCase()))||prompts[attempt%prompts.length];
-  return {text:eligible,requirement:"Role discussion",priority:1,category:"general",source:"Job description",status:"Open-ended"};
+  for(let j=0;j<general.length;j++){const text=general[(index+j)%general.length];if(!used.has(norm(text)))return {text,requirement:"Role discussion",category:"general",priority:1,source:"Job description"};}
+  return {text:general[index%general.length],requirement:"Role discussion",category:"general",priority:1,source:"Job description"};
  }
- for(let turn=0;turn<Math.max(ordered.length*30,30);turn++){
-  const c=ordered[(attempt+turn)%ordered.length];
-  const base=questionFor(c);
-  const label=clean(c.label),k=base.category,variant=Math.floor((attempt+turn)/ordered.length)%10;
-  const prefix=stage==="profile"?"The profile additionally mentions ":"The job calls for ";
-  const templates=[
-   base.text,
-   `For ${label}, what actual experience would you choose to discuss and why?`,
-   `What was your most recent responsibility connected to ${label}?`,
-   `Can you walk me through a real situation related to ${label}, without assuming you have direct experience?`,
-   `Which relevant task involving ${label} required the most collaboration, and what was your contribution?`,
-   `What would you want to clarify about ${label} before taking on this role?`,
-   `What is one lesson from previous work that you would bring to ${label}?`,
-   `Could you give an example that demonstrates your understanding of ${label} in practice?`,
-   `What was the result of your closest experience with ${label}, and how did you know?`,
-   `When thinking about ${label}, which previous role gave you the most relevant preparation?`
-  ];
-  const profileTemplates=[
-   `Your LinkedIn profile mentions ${label}. What relevant work example could confirm that description?`,
-   `For the new LinkedIn claim about ${label}, when did you gain this experience and what did you personally do?`,
-   `Which project or responsibility would best corroborate the LinkedIn statement about ${label}?`,
-   `Could you clarify the context and outcome of the LinkedIn information about ${label}?`,
-   `Is there any additional evidence you would like to share concerning ${label} from the profile?`
-  ];
-  const text=stage==="profile"&&c.source==="LinkedIn"?profileTemplates[variant%profileTemplates.length]:templates[variant];
-  if(!used.has(text.toLowerCase()))return {...base,text,requirement:c.label,category:k,priority:priorityValue(c),stage,source:"Requirement-based draft"};
+ for(let step=0;step<ordered.length;step++){
+  const c=ordered[(index+step)%ordered.length];
+  const candidates=[...(stage==="profile"&&c.source==="LinkedIn"?linkedin:[]),...patterns];
+  const base=Math.floor(index/Math.max(1,ordered.length));
+  for(let j=0;j<candidates.length;j++){
+   const text=candidates[(base+j)%candidates.length].replaceAll("{label}",clean(c.label));
+   if(used.has(norm(text)))continue;
+   return {text,requirement:c.label,category:c.kind||"requirement",priority:priorityValue(c),matched:!!c.matched,context:c.matched?clip(c.evidence):"",source:"Grounded alternative",stage};
+  }
  }
- // The available requirement is still presented as an unverified question.
- const c=ordered[attempt%ordered.length];
- const label=clean(c.label);
- return {...questionFor(c),text:`Could you describe an example relevant to ${label} and explain your personal contribution?`,requirement:c.label,stage};
+ for(const text of general){if(!used.has(norm(text)))return {text,requirement:"Role discussion",category:"general",priority:1,source:"Job description"};}
+ return {text:general[index%general.length],requirement:"Role discussion",category:"general",priority:1,source:"Job description"};
 }
 export function fillQuestionSet(checks,existing=[],count=6,stage="resume",seed=0){
  const out=existing.filter(q=>q&&typeof q.text==="string").slice(0,count);
