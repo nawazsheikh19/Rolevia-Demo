@@ -14,6 +14,7 @@ pdfjs.GlobalWorkerOptions.workerSrc=worker;
 const DB="rolevia-demo",RETENTION_MS=6*60*60*1000,root=document.getElementById("app");
 let data={job:"",criteria:[],candidates:[],selected:null,syntheticConfirmed:false,savedAt:0};
 let view="setup",active=null,notice="",saveTimer,workspaceEpoch=0;
+let mockChoiceRole="ml",mockChoiceListing="";
 const semanticByCandidate=new Map();let semanticBusy=false;let questionAiBusy=false;
 const html=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore("records");r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
@@ -42,15 +43,19 @@ function render(){root.replaceChildren();const layout=dom("div",{class:"layout"}
 function heading(parent,eyebrow,title,detail){parent.append(dom("div",{class:"eyebrow",text:eyebrow}),dom("h1",{text:title}),dom("p",{class:"intro",text:detail}))}
 function renderSetup(container){heading(container,"01 / ASSESSMENT SETUP","Find the right talent.","Import a role and up to 30 resumes. Review skills, experience, responsibilities, education and industry requirements before comparing candidates.");const mockRole=dom("select",{class:"control mock-role","aria-label":"Mock profession"});
 for(const [key,role] of Object.entries(MOCK_CATALOG))mockRole.append(dom("option",{value:key,text:role.label}));
-mockRole.value=Object.keys(MOCK_CATALOG)[0]||"";
+mockRole.value=MOCK_CATALOG[mockChoiceRole]?mockChoiceRole:Object.keys(MOCK_CATALOG)[0]||"";
 const mockJob=dom("select",{class:"control mock-job","aria-label":"Mock job listing"});
 const updateMockJobs=()=>{
  mockJob.replaceChildren();
- const family=MOCK_CATALOG[mockRole.value]||Object.values(MOCK_CATALOG)[0];
+ mockChoiceRole=mockRole.value;
+ const family=MOCK_CATALOG[mockChoiceRole];
  for(const listing of family.jobs)mockJob.append(dom("option",{value:listing.id,text:listing.title}));
- mockJob.value=family.jobs[0]?.id||"";
+ mockJob.value=family.jobs.some(j=>j.id===mockChoiceListing)?mockChoiceListing:family.jobs[0]?.id||"";
+ mockChoiceListing=mockJob.value;
 };
-mockRole.addEventListener("change",updateMockJobs);updateMockJobs();
+mockRole.addEventListener("change",()=>{mockChoiceListing="";updateMockJobs()});
+mockJob.addEventListener("change",()=>{mockChoiceListing=mockJob.value});
+updateMockJobs();
 const chosenMock=()=>mockListing(mockRole.value,mockJob.value);
 function clearCandidateState(){
  workspaceEpoch++;
@@ -105,9 +110,9 @@ const mockPanel=dom("section",{class:"mock-lab","aria-label":"Mock test data"},[
  dom("p",{class:"mock-tip",text:"Tip: Load full mock test is the quickest way to try the candidate ranking. To test LinkedIn, open any mock candidate and choose Load mock LinkedIn. This does not use real applicant information."})
 ]);
 container.append(mockPanel);
-const columns=dom("div",{class:"columns"}),job=section("Job description","Paste job requirements or upload a PDF, Word, or text document.");const jobfile=dom("input",{type:"file",accept:".pdf,.docx,.txt",class:"control"});jobfile.onchange=async()=>{try{data.job=await parseFile(jobfile.files[0]);data.criteria=criteriaFromJob(data.job);data.questionSets={};save();alertUser(data.criteria.length+" suggested criteria found. Verify each extracted requirement before ranking.")}catch(e){alertUser(e.message)}};const area=dom("textarea",{class:"control big",placeholder:"Paste role requirements here...",maxlength:"30000",value:data.job});area.oninput=()=>{data.job=area.value;save()};job.append(field("Import job description",jobfile),field("Role requirements",area),button("Generate criteria",()=>{data.job=area.value;data.criteria=criteriaFromJob(data.job);save();alertUser(data.criteria.length+" suggested criteria found across job requirements. Review unfamiliar items and weights before ranking.")}));const cr=dom("div",{class:"rubric"});cr.append(dom("h3",{text:"Extracted job criteria ("+data.criteria.length+")"}),dom("p",{class:"muted",text:"Priority weights: 5 = highest importance, 1 = lowest. Scores reflect weighted document evidence, not suitability. Required vs preferred is a separate label; review both before ranking."}),dom("div",{class:"priority-scale"},[
+const columns=dom("div",{class:"columns"}),job=section("Job description","Paste job requirements or upload a PDF, Word, or text document.");const jobfile=dom("input",{type:"file",accept:".pdf,.docx,.txt",class:"control"});jobfile.onchange=async()=>{try{data.job=await parseFile(jobfile.files[0]);data.criteria=criteriaFromJob(data.job);data.questionSets={};save();alertUser(data.criteria.length+" suggested criteria found. Verify each extracted requirement before ranking.")}catch(e){alertUser(e.message)}};const area=dom("textarea",{class:"control big",placeholder:"Paste role requirements here...",maxlength:"30000",value:data.job});area.oninput=()=>{data.job=area.value;save()};job.append(field("Import job description",jobfile),field("Role requirements",area),button("Generate criteria",()=>{data.job=area.value;data.criteria=criteriaFromJob(data.job);save();alertUser(data.criteria.length+" suggested criteria found across job requirements. Review unfamiliar items and weights before ranking.")}));const cr=dom("div",{class:"rubric"});cr.append(dom("h3",{text:"Extracted job criteria ("+data.criteria.length+")"}),dom("p",{class:"muted",text:"Priority: 5 = highest, 1 = lowest. The dropdown starts with a context-based suggestion from must-have, required, preferred and nice-to-have wording; recruiters can change it at any time. Only the dropdown controls the weight."}),dom("div",{class:"priority-scale"},[
 dom("span",{text:"1 · Lowest"}),dom("span",{text:"2 · Low"}),dom("span",{text:"3 · Medium"}),dom("span",{text:"4 · High"}),dom("span",{text:"5 · Highest"})
-]));data.criteria.map((x,i)=>({x,i})).sort((a,b)=>byPriority(a.x,b.x)).forEach(({x,i})=>{const line=dom("div",{class:"criterion"}),name=dom("input",{class:"control",value:x.label,"aria-label":"Job requirement"}),weight=dom("select",{class:"control","aria-label":"Priority: 1 lowest, 5 highest"});for(let w=1;w<=5;w++){const o=dom("option",{value:w,text:String(w)});o.selected=w===Number(x.weight);weight.append(o)}name.onchange=()=>{x.label=name.value.trim().slice(0,80);x.aliases=[x.label];x.kind="custom";delete x.minYears;delete x.experienceFocus;save();render()};weight.onchange=()=>{x.weight=Number(weight.value);save()};line.append(name,weight,button("×",()=>{data.criteria.splice(i,1);save();render()},"plain"));cr.append(dom("div",{class:"criterion-meta",text:(x.kind||"custom").replace(/\b\w/g,c=>c.toUpperCase())+" · "+(x.priority||"required")+" · Priority "+x.weight+"/5"}));cr.append(line)});cr.append(button("+ Add requirement",()=>{data.criteria.push({label:"New requirement",kind:"custom",priority:"required",aliases:["New requirement"],weight:3});save();render()}));job.append(cr);const uploads=section("Candidate resumes","Upload multiple PDF, DOCX, or TXT files, up to 5MB each.");
+]));data.criteria.map((x,i)=>({x,i})).sort((a,b)=>byPriority(a.x,b.x)).forEach(({x,i})=>{const line=dom("div",{class:"criterion"}),name=dom("input",{class:"control",value:x.label,"aria-label":"Job requirement"}),weight=dom("select",{class:"control","aria-label":"Priority: 1 lowest, 5 highest"});for(let w=1;w<=5;w++){const o=dom("option",{value:w,text:String(w)});o.selected=w===Number(x.weight);weight.append(o)}name.onchange=()=>{x.label=name.value.trim().slice(0,80);x.aliases=[x.label];x.kind="custom";delete x.minYears;delete x.experienceFocus;save();render()};weight.onchange=()=>{x.weight=Number(weight.value);x.manualWeight=true;save();render()};line.append(name,weight,button("×",()=>{data.criteria.splice(i,1);save();render()},"plain"));cr.append(dom("div",{class:"criterion-meta",text:(x.kind||"custom").replace(/\b\w/g,c=>c.toUpperCase())}));cr.append(line)});cr.append(button("+ Add requirement",()=>{data.criteria.push({label:"New requirement",kind:"custom",priority:"required",aliases:["New requirement"],weight:3});save();render()}));job.append(cr);const uploads=section("Candidate resumes","Upload multiple PDF, DOCX, or TXT files, up to 5MB each.");
 const ackInput=dom("input",{type:"checkbox",checked:!!data.syntheticConfirmed,"aria-label":"Confirm only fictional candidate files",on:{change:e=>{data.syntheticConfirmed=!!e.target.checked;save()}}});
 uploads.append(dom("label",{class:"synthetic-consent"},[
  ackInput,dom("span",{text:"I confirm the uploaded CVs are fictional or synthetic and contain no real applicant personal information."})
@@ -315,8 +320,10 @@ function renderShortlist(container){
    dom("b",{class:"percent",text:(selectedCandidate?(c.enriched?.percent??c.base.percent):c.base.percent)+"%"})
   ]));
   card.append(dom("small",{text:"CV evidence: "+(c.base.percent??"—")+"%"+(c.enriched?" · CV + LinkedIn: "+c.enriched.percent+"%":" · No LinkedIn assessment")}));
-  card.append(button("Review",()=>{active=c.id;view="results";render()},"secondary"),
-   button(selectedCandidate?"Remove from shortlist":"Choose candidate",()=>toggleSelected(c.id),selectedCandidate?"plain":"secondary"));
+  card.append(dom("div",{class:"shortlist-card-actions"},[
+   button("Review",()=>{active=c.id;view="results";render()},"secondary"),
+   button(selectedCandidate?"Remove from shortlist":"Choose candidate",()=>toggleSelected(c.id),selectedCandidate?"plain":"secondary")
+  ]));
   parent.append(card);
  }
  selected.forEach(c=>showCandidate(included,c,true));

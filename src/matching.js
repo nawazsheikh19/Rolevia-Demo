@@ -1,3 +1,4 @@
+import {suggestCriteriaPriorities} from "./priority-model.js";
 // Evidence-led demonstrator: assessments are not employment decisions.
 export const taxonomy={
 "Python":["python"],"SQL":["sql","postgresql","mysql"],"Machine learning":["machine learning","scikit-learn","sklearn"],
@@ -196,7 +197,7 @@ for(const [label,rule,aliases] of [
 ["Master's degree",/\b(master'?s?|m\.?sc\.?|m\.?eng\.?)\b/i,["master","masters","master's","msc","m.sc","meng"]],
 ["PhD",/\b(ph\.?d\.?|doctorate)\b/i,["phd","ph.d","doctorate"]]
 ])if(rule.test(text))out.push(make(label,"qualification",aliases,2,priorityFor(text,aliases[0])));
-return [...out,...genericCriteria(text,out)].slice(0,70);
+return suggestCriteriaPriorities(text,[...out,...genericCriteria(text,out)].slice(0,70));
 }
 function experienceEvidence(text,min,focus){
 const str=String(text||"");

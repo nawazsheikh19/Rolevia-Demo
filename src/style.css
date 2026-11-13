@@ -106,3 +106,10 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .upload-choices input[type=file]{width:100%;max-width:100%;font-size:12px}
 .dropzone small{display:block;color:#687f89;line-height:1.5}
 @media(max-width:760px){.upload-choices{grid-template-columns:1fr}}
+
+/* Shortlist: separate candidate details from actions; avoid cramped inline buttons. */
+.shortlist-summary+.columns .candidate{padding-bottom:16px}
+.shortlist-card-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:15px;padding-top:10px;border-top:1px solid #e6ecee}
+.shortlist-card-actions button{margin:0;min-height:36px}
+.criterion-meta{font-size:11px;color:#627988}
+@media(max-width:550px){.shortlist-card-actions{gap:8px}.shortlist-card-actions button{flex:1 1 auto}}
