@@ -113,7 +113,7 @@ export function profileVerificationQuestions(delta,{limit=4}={}){
  * requirement-grounded variant. No speculative candidate achievements.
  */
 export function alternativeQuestion(checks,existing=[],stage="resume",attempt=0){
- const ordered=[...(checks||[])].sort(byPriority);
+ const ordered=[...(checks||[])].sort((a,b)=>stage==="profile"?((b.source==="LinkedIn")-(a.source==="LinkedIn")||byPriority(a,b)):byPriority(a,b));
  const used=new Set(existing.map(q=>String(q.text||"").trim().toLowerCase()));
  if(!ordered.length){
   // Neutral, non-evaluative prompts when the JD has no extractable criteria.
@@ -145,7 +145,14 @@ export function alternativeQuestion(checks,existing=[],stage="resume",attempt=0)
    `What was the result of your closest experience with ${label}, and how did you know?`,
    `When thinking about ${label}, which previous role gave you the most relevant preparation?`
   ];
-  const text=templates[variant];
+  const profileTemplates=[
+   `Your LinkedIn profile mentions ${label}. What relevant work example could confirm that description?`,
+   `For the new LinkedIn claim about ${label}, when did you gain this experience and what did you personally do?`,
+   `Which project or responsibility would best corroborate the LinkedIn statement about ${label}?`,
+   `Could you clarify the context and outcome of the LinkedIn information about ${label}?`,
+   `Is there any additional evidence you would like to share concerning ${label} from the profile?`
+  ];
+  const text=stage==="profile"&&c.source==="LinkedIn"?profileTemplates[variant%profileTemplates.length]:templates[variant];
   if(!used.has(text.toLowerCase()))return {...base,text,requirement:c.label,category:k,priority:priorityValue(c),stage,source:"Requirement-based draft"};
  }
  // The available requirement is still presented as an unverified question.
