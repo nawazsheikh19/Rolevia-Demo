@@ -6,7 +6,8 @@
 import {alternativeQuestion} from "./questions.js";
 let textGenerator;
 let lastFailure="";
-const prohibited=/\b(?:age|date of birth|married|marital status|pregnant|pregnancy|religion|ethnicity|race|nationality|citizenship|disability|sexual orientation|political views)\b/i;
+const prohibited=/\b(?:age|date of birth|married|marital status|pregnant|pregnancy|religion|ethnicity|race|nationality|citizenship|disability|sexual orientation|political views|immigration status|children|parenthood|medical history|health status|family status)\b/i;
+export function sanitizedJobRequirement(value){return String(value||"").replace(/[<>\r\n{}]/g," ").replace(/\s+/g," ").trim().slice(0,105)}
 export function validateQuestionDraft(input,requirement){
  const candidate=String(input||"").trim().replace(/\s+/g," ").slice(0,260);
  if(candidate.length<22||candidate.length>230||!candidate.endsWith("?")||prohibited.test(candidate))return null;
@@ -30,11 +31,12 @@ export async function draftInterviewQuestion(check,existing=[],stage="resume"){
   .catch(e=>{textGenerator=null;throw e});
  const generate=await textGenerator;
  // The model sees only a short job requirement, never a candidate CV or LinkedIn profile.
- const safeLabel=label.replace(/[<>\\r\\n{}]/g," ").replace(/\\s+/g," ").trim().slice(0,105);
- const avoid=existing.slice(-8).map(q=>String(q.text||"").slice(0,100)).join(" | ");
+ const safeLabel=sanitizedJobRequirement(label);
+ const angles=["practical example","collaboration","solving a problem","planning work","measuring outcomes","learning and transferability"];
+ const angle=angles[existing.length%angles.length];
  const messages=[
   {role:"system",content:"You help a human recruiter draft fair, job-related interview questions. Output only ONE open-ended question. Never presume the candidate has done anything. Never ask about personal protected characteristics. No claims about the candidate."},
-  {role:"user",content:"Job requirement: "+safeLabel+". Write an open-ended behavioral or situational question about this requirement. Do not repeat these prior questions: "+avoid.slice(0,550)+". Include the job requirement in the question."}
+  {role:"user",content:"Job requirement: "+safeLabel+". Write ONE open-ended interview question from the angle of "+angle+". Include the exact job requirement and avoid invented candidate experience."}
  ];
  const output=await generate(messages,{max_new_tokens:95,temperature:0.8,top_p:0.9,do_sample:true,return_full_text:false});
  const candidate=output?.[0]?.generated_text;
