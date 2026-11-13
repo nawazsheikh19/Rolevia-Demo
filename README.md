@@ -16,6 +16,15 @@ No installation or account is required. Open the link in Chrome or Microsoft Edg
 
 This is a free evaluation preview, **not a live recruitment product**. Use fictional CVs and jobs only. Rankings are not hiring decisions, and the browser's temporary storage is not an enterprise database.
 
+## Priority weights and evidence order
+
+Each extracted job requirement has an editable **priority weight from 1 to 5**:
+
+- **5 = Highest priority** — most influential in the evidence coverage percentage.
+- **4 = High**, **3 = Medium**, **2 = Low**, **1 = Lowest**.
+
+Requirement evidence appears **highest priority first** in the shortlist. *Required* versus *preferred* is a separate descriptor; check both settings before comparing CVs. The resulting percentage is only weighted textual coverage, not an objective ATS rating or probability of hiring success. More documented evidence does not guarantee better job performance.
+
 ## What can you try?
 
 1. **Start with sample data:** Choose an example profession (machine learning, operations or customer success) and select **Load sample workspace** to see three fictional candidates.
@@ -26,6 +35,12 @@ This is a free evaluation preview, **not a live recruitment product**. Use ficti
 6. **Test data controls:** Export an anonymized CSV, make a demonstration selection, or manually delete the local workspace.
 
 **What does the match percentage mean?** It shows how much of the configured, weighted requirements have matching words or phrases in the supplied text. It is **not** a prediction of job performance, a verified measure of candidate suitability, or a recommendation to hire or reject someone.
+
+## Interview questions and LinkedIn comparison
+
+Questions appear on the **CV-only review before adding LinkedIn**. They vary by requirement type (technical skill, responsibility, experience, qualification and industry), reference the submitted evidence where available, and address higher-priority requirements first. LinkedIn enrichments are displayed as **Before: CV-only → After: CV + LinkedIn**, listing newly evidenced claims, previously supported claims, and gaps requiring verification. New profile claims receive separate follow-up questions. A missing LinkedIn profile is not a negative signal.
+
+The **Draft alternative with free AI** action can optionally download the Apache-2.0 FLAN-T5 Small model to generate an additional interview-question draft within the browser. Its output is unverified and must be reviewed. The normal question generator needs no model download.
 
 ## Optional free AI
 
