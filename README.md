@@ -84,3 +84,16 @@ npm run dev
 GitHub Pages deployment is handled by `.github/workflows/deploy.yml`; ensure the repository's Pages deployment source is configured as **GitHub Actions**.
 
 **Rolevia is an experimental decision-support tool. It is not suitable for real employment decisions or processing actual applicant information in its current form.**
+
+
+## Recruiter interview and shortlist workflow
+
+1. Open **Candidate ranking**, select a candidate and review requirements ordered by priority (5 highest, 1 lowest).
+2. See **six CV-only interview questions**. Each has an editable text field, **×** removes it and automatically supplies a new job-grounded alternative, and **Generate alternative** attempts an optional local language model with a usable non-network fallback. Recruiters can replace any question with their own.
+3. In **Stage 2**, paste candidate-provided LinkedIn text if available. Clear before/after percentages describe *documented weighted requirements*, not validated ability. The labels mean: **new LinkedIn-only requirement evidence**, **already supported by the CV**, and **not documented in either source**.
+4. If LinkedIn is provided, **five follow-up questions** appear, emphasizing profile-only claims first, then outstanding job criteria. Each can be edited, replaced or written by the recruiter.
+5. Select **Choose candidate** for as many candidates as needed. Open **Shortlist** to see selected versus other applicants. The selected group is ordered by the percentage of weighted requirement coverage based on the CV and optional LinkedIn; non-selected candidates remain available for human review.
+6. Use **Delete other candidates** in the Shortlist tab, with confirmation, only after the desired candidates are selected. This retains the selected candidates and job rubric. **Delete entire batch** in the upload tab clears everyone while preserving the job rubric.
+
+### Local question model limitations
+**Xenova/flan-t5-small** is a small optional browser-side model, not a dedicated hiring-interview model. External model files and WASM runtime assets must load for it to work; network/CSP blockers can prevent that. The fallback question bank generates alternatives locally without making a network request and labels the source. AI output can be unreliable or hallucinate, so recruiters must verify all questions and avoid protected characteristics; no automatic hiring decisions are made. The demo uses fictional profiles only.
