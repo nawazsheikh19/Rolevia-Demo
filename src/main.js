@@ -88,7 +88,7 @@ function renderQuestionEditor(parent,candidate,stage,checks,count){
  questions.forEach((q,i)=>{
   const row=dom("div",{class:"question-row"+(q.source==="Recruiter"?" recruiter-priority-question":"")});
   const bar=dom("div",{class:"question-head"});
-  bar.append(dom("strong",{class:"question-context",text:"Q"+(i+1)+" · "+(q.source==="Recruiter"?"★ Recruiter priority · Your question":"Priority "+(q.priority||1)+"/5 · "+(q.category||"role"))}),
+  bar.append(dom("strong",{class:"question-context",text:"Q"+(i+1)+" · "+(q.source==="Recruiter"?"★ Recruiter priority · Your question":"Priority "+(q.priority||1)+"/5 · "+(q.category||"role")+(q.source?.includes("Qwen")?" · AI DRAFT — REVIEW":""))}),
    dom("button",{class:"plain remove-question","aria-label":"Remove question "+(i+1)+" without replacement",title:"Remove this question",text:"×",on:{click:()=>{
     data.deletedQuestionTexts[key].push(q.text);
     data.deletedQuestionTexts[key]=data.deletedQuestionTexts[key].slice(-100);
@@ -104,6 +104,7 @@ function renderQuestionEditor(parent,candidate,stage,checks,count){
   };
   row.append(editor);
   if(q.context)row.append(dom("small",{text:"Referenced submitted text: "+q.context}));
+  if(q.source?.includes("Qwen"))row.append(dom("small",{class:"ai-draft-note",text:"This optional language-model draft may be inaccurate. Review for relevance, assumptions and inappropriate questions before using."}));
   if(q.source!=="Recruiter"){
   row.append(button("Another question",()=>{
     const basis=checks.find(c=>c.label===q.requirement)||checks[i%Math.max(1,checks.length)]||{label:q.requirement||"Job responsibilities",kind:q.category||"requirement",weight:q.priority||1};
@@ -115,8 +116,8 @@ function renderQuestionEditor(parent,candidate,stage,checks,count){
    },"secondary"));
   row.append(button(questionAiBusy?"AI loading…":"Try LLM draft (experimental)",async()=>{
     if(questionAiBusy)return;
-    if(!confirm("Download a large free Qwen language model to this browser for optional question drafting? This can use substantial bandwidth, memory and time on some laptops. No résumé or LinkedIn text will be sent in the prompt; only the job requirement. Generated drafts need human review."))return;
-    questionAiBusy=true;
+    if(!confirm("Download a large free Qwen language model to this browser for optional question drafting? The model files may require around 800 MB of downloads and substantial memory and CPU on older laptops. No résumé or LinkedIn text will be sent in the prompt; only the job requirement. Generated drafts need human review."))return;
+    questionAiBusy=true;alertUser("Preparing optional on-device Qwen model. Standard question alternatives remain available without AI.");
     const basis=checks.find(c=>c.label===q.requirement)||{label:q.requirement||"Job responsibilities",kind:q.category||"requirement",weight:q.priority||1};
     const history=(q.history||[]).concat(q.text).slice(-80);
     const seen=questions.filter((_,index)=>index!==i).concat(history.map(text=>({text})),data.deletedQuestionTexts[key].map(text=>({text})));
