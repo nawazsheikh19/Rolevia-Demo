@@ -18,13 +18,13 @@ test("question types vary and work before LinkedIn",()=>{
  assert.deepEqual(q.map(x=>x.priority),[5,4,3,2,1]);
  assert.equal(new Set(q.map(x=>x.text)).size,5);
  assert.match(q[1].text,/onboarding/i);
- assert.match(q[2].text,/qualification/i);
+ assert.match(q[2].text,/Bachelor/i);
 });
 test("profile-only follow ups differ from CV questions",()=>{
  const delta={newlyEvidenced:[{label:"Power BI",kind:"skill",weight:4,evidence:"Power BI dashboard project"}]};
  const q=profileVerificationQuestions(delta);
  assert.equal(q.length,1);
- assert.match(q[0].text,/corroborate/i);
+ assert.match(q[0].text,/LinkedIn profile/i);
  assert.equal(q[0].priority,4);
 });
 test("no LinkedIn claims means no profile-only questions",()=>assert.deepEqual(profileVerificationQuestions({newlyEvidenced:[]}),[]));
