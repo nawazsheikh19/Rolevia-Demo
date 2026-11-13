@@ -28,3 +28,9 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .sample-bar .sample-picker{max-width:230px;margin:0}
 .sample-bar button{white-space:nowrap}
 @media(max-width:900px){.sample-bar{flex-direction:column;align-items:stretch}.sample-bar .sample-picker{max-width:none}.sample-bar button{width:100%}}
+
+/* Candidate batch management: destructive action stays adjacent to batch heading. */
+.batch-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:16px 0 6px}
+.batch-header h3{margin:0}
+.batch-header .danger{margin:0;font-size:12px;padding:9px 12px;white-space:nowrap}
+@media(max-width:530px){.batch-header{align-items:flex-start;flex-direction:column}.batch-header .danger{width:100%}}
