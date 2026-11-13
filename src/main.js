@@ -63,6 +63,68 @@ dom("span",{text:"1 · Lowest"}),dom("span",{text:"2 · Low"}),dom("span",{text:
  },"danger",data.candidates.length===0)
 ]);
 uploads.append(drop,batchHeader);for(const c of data.candidates)uploads.append(dom("div",{class:"file"},[dom("span",{text:c.name+" · "+c.filename}),button("Remove",()=>{data.candidates=data.candidates.filter(x=>x.id!==c.id);save();render()},"plain")]));uploads.append(dom("div",{class:"safe",text:"Pilot safety: documents are parsed locally and text is stored in this browser for 24 hours after the latest edit. Use synthetic profiles only; this is not an enterprise-secure database."}),button("View ranked shortlist →",()=>{view="results";render()},"primary full",!data.candidates.length||!data.criteria.length));columns.append(job,uploads);container.append(columns)}
+
+function renderQuestionEditor(parent,candidate,stage,checks,count){
+ data.questionSets??={};
+ const key=candidate.id+":"+stage;
+ const current=(data.questionSets[key]||[]).filter(q=>q&&typeof q.text==="string"&&q.text.trim());
+ const questions=fillQuestionSet(checks,current,count,stage);
+ data.questionSets[key]=questions;
+ const panel=dom("div",{class:"questions-panel"});
+ panel.append(dom("h3",{text:(stage==="resume"?"CV interview questions":"Post-LinkedIn interview questions")+" ("+count+")"}),
+ dom("p",{text:stage==="resume"?"Six job-related, HR-friendly questions. Edit text directly, remove and instantly replace with ×, or request another question.":"Five optional follow-up questions from new LinkedIn claims and outstanding job requirements. They are not proof of a claim."}));
+ if(questionModelError())panel.append(dom("p",{class:"safe",text:"The optional AI model cannot currently download: "+questionModelError().slice(0,130)+". Grounded question alternatives work without it."}),
+ button("Retry AI download",()=>{resetQuestionModel();alertUser("AI download retry enabled. Question replacements will continue working offline.")},"plain"));
+ questions.forEach((q,i)=>{
+  const row=dom("div",{class:"question-row"});
+  const bar=dom("div",{class:"question-head"});
+  bar.append(dom("strong",{class:"question-context",text:"Q"+(i+1)+" · "+(q.source==="Recruiter"?"Recruiter-written":"Priority "+(q.priority||1)+"/5 · "+(q.category||"role"))}),
+   button("×",()=>{
+    const remaining=questions.filter((_,idx)=>idx!==i);
+    const replacement=alternativeQuestion(checks,remaining.concat([q]),stage,i+remaining.length);
+    questions[i]=replacement;data.questionSets[key]=questions;save();render();
+   },"plain"));
+  row.append(bar);
+  const editor=dom("textarea",{class:"control question-edit","aria-label":"Interview question "+(i+1),rows:"2",maxlength:"450",value:q.text});
+  editor.onchange=()=>{
+   if(!editor.value.trim()){editor.value=q.text;return}
+   q.text=editor.value.trim();q.source="Recruiter";data.questionSets[key]=questions;save();
+  };
+  row.append(editor);
+  if(q.context)row.append(dom("small",{text:"Referenced submitted text: "+q.context}));
+  row.append(button(questionAiBusy?"Generating…":"Generate alternative",async()=>{
+   if(questionAiBusy)return;
+   questionAiBusy=true;
+   const target=checks.find(c=>c.label===q.requirement)||checks[i%Math.max(1,checks.length)]||{label:q.requirement||"Role responsibilities",kind:q.category||"requirement",weight:q.priority||1};
+   try{
+    const result=await draftInterviewQuestion(target,questions,stage);
+    if(result.text!==q.text&&!questions.some((item,j)=>j!==i&&item.text.toLowerCase()===result.text.toLowerCase())){
+     questions[i]={...q,text:result.text,source:result.source,requirement:target.label};
+    }else questions[i]=alternativeQuestion(checks,questions,stage,i+9);
+    data.questionSets[key]=questions;save();
+    alertUser(result.modelError?"AI model unavailable. Generated a grounded local alternative instead.":"Generated a draft alternative. Please review its wording and relevance.");
+   }catch(e){
+    questions[i]=alternativeQuestion(checks,questions,stage,i+17);data.questionSets[key]=questions;save();
+    alertUser("Created a local alternative. AI draft unavailable: "+String(e?.message||e).slice(0,80));
+   }finally{questionAiBusy=false;render()}
+  },"secondary",questionAiBusy));
+  panel.append(row);
+ });
+ const custom=dom("textarea",{class:"control question-edit",placeholder:"Write your own job-related interview question…",rows:"2",maxlength:"450"});
+ const slot=dom("select",{class:"control","aria-label":"Question number to replace"});
+ questions.forEach((_,i)=>slot.append(dom("option",{value:String(i),text:"Replace question "+(i+1)})));
+ panel.append(dom("h3",{text:"Recruiter-supplied questions"}),
+ dom("p",{text:"Replace a generated question with one of your own. The six-question CV plan (or five-question profile plan) stays the same size."}),custom,slot,
+ button("Add recruiter question",()=>{
+  const q=custom.value.trim();
+  if(q.length<15){alertUser("Enter a meaningful interview question of at least 15 characters.");return}
+  if(/\b(?:date of birth|marital status|pregnan\w*|religion|ethnicity|sexual orientation|disability|race)\b/i.test(q)){alertUser("Please avoid personal or protected-characteristic questions. Keep questions job-related.");return}
+  const i=Number(slot.value)||0;
+  questions[i]={...questions[i],text:q,source:"Recruiter",context:""};data.questionSets[key]=questions;save();alertUser("Recruiter question added to the interview plan.");
+ },"secondary"));
+ parent.append(panel);
+}
+
 function renderResults(container){const list=ranked();heading(container,"02 / CANDIDATE INTELLIGENCE","Ranked shortlist","The evidence-coverage score considers job-related skills, relevant experience, responsibilities, qualifications and industry context. It is not a validated suitability prediction.");if(!list.length){container.append(button("Add candidates",()=>{view="setup";render()}));return}active=list.some(c=>c.id===active)?active:list[0].id;const chosen=list.find(c=>c.id===active),assessment=chosen.enriched||chosen.base;const columns=dom("div",{class:"results"}),left=section("Resume-based ranking","All candidates are ranked by the same original resume-only criteria.");list.forEach((c,i)=>{const item=dom("div",{class:"candidate "+(c.id===active?"active":"")},[dom("div",{class:"candidatehead"},[dom("strong",{text:"#"+(i+1)+" "+c.name}),dom("b",{class:"percent",text:(c.base.percent??"—")+"%"})]),dom("div",{class:"progress"},[dom("i",{style:"width:"+(c.base.percent??0)+"%"})]),dom("small",{text:c.base.evidenced+" of "+c.base.total+" criteria evidenced"})]);item.onclick=()=>{active=c.id;render()};left.append(item)});const csv=button("↓ Export anonymous CSV",()=>{const rows=[["Rank","Candidate","Resume coverage %","Evidence count","Total criteria","LinkedIn coverage %"],...list.map((c,i)=>[i+1,"Candidate "+(i+1),c.base.percent,c.base.evidenced,c.base.total,c.enriched?.percent??""])];const blob=new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"});const url=URL.createObjectURL(blob);const link=dom("a",{href:url,download:"rolevia-anonymous-ranking.csv"});link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});left.append(csv);left.append(button("Shortlist ("+selectedIds().length+")",()=>{view="shortlist";render()},"primary full"));const right=section(chosen.name,"Resume score: "+(chosen.base.percent??"—")+"%"+(chosen.enriched?" · With LinkedIn: "+chosen.enriched.percent+"%":""));right.append(dom("h3",{text:"Evidence by requirement category"}));for(const [category,count] of Object.entries(assessment.groups||{}))right.append(dom("div",{class:"group-summary"},[dom("strong",{text:category.replace(/\b\w/g,c=>c.toUpperCase())}),dom("span",{text:count.supported+" / "+count.total+" evidenced"})]));right.append(dom("h3",{text:"Documented requirement evidence"}));for(const c of [...assessment.checks].sort(byPriority))right.append(dom("div",{class:"evidence"},[dom("b",{class:c.matched?"good":"unknown",text:c.matched?"✓":"?"}),dom("div",{},[dom("strong",{text:"Priority "+c.weight+"/5 · "+c.label+" ["+(c.kind||"skill")+", "+(c.priority||"required")+"] · "+(c.matched?c.source+(c.matchMethod==="related wording — verify"?" · Related wording — verify":""):"Not established")}),dom("small",{text:c.evidence||"No direct evidence found. Verify with the candidate."})])]));const interview=dom("div",{class:"questions-panel"});
 interview.append(dom("h3",{text:"CV-only review · Suggested interview questions"}),dom("p",{text:"Prepared before LinkedIn. These questions target the highest-priority role requirements and use CV evidence where available. Ask for concrete examples rather than treating gaps as failures."}));
 for(const q of interviewQuestions(chosen.base.checks,{limit:6})){
