@@ -50,12 +50,22 @@ Select **Explore related evidence with free AI** on a candidate to download a sm
 
 Before using the CV file upload control, the recruiter must affirm that documents are **fictional/synthetic and contain no real applicant information**. This is a demonstration safeguard, not a legal privacy guarantee. Sample workspaces can be used without uploading any documents.
 
+## File or folder resume uploads
+
+Rolevia supports two separate options: **Upload files** to select one or more individual PDF/DOCX/TXT resumes and **Upload folder** to select a folder containing multiple resumes (including nested folders). Folder selection is supported by current Chrome and Edge. Unsupported and hidden files are skipped before applying the 30-candidate maximum. Each document is still limited to 5 MB and PDF text extraction to 35 pages. File paths are **not** stored in the workspace; only the filename and extracted text are saved. This demonstration remains strictly synthetic-only, including files selected from local folders.
+
+## Data deletion and six-hour retention
+
+**Privacy & retention → Delete all workspace data** immediately clears Rolevia's job description, candidate resumes, pasted LinkedIn content, interview questions and shortlist from the app's active memory and its IndexedDB record. A confirmation is required and a successful storage transaction is acknowledged; errors are reported, not silently hidden. **Delete entire batch** is a separate control that clears candidate records but deliberately keeps the job description and criteria.
+
+If the user does not delete the workspace, browser data automatically expires **six hours after the last saved change**. While Rolevia remains open it checks for expiry; if closed, the expired records are purged on next opening. Previously saved 24-hour records are also limited to six hours from their last saved change on the next app load. Deletion cannot remove source files from the recruiter's computer, exported downloads, browser backups or independently cached Hugging Face model files.
+
 ## Privacy and limitations
 
 **Please use only fictional/synthetic candidate information during this demo. Do not upload real applicant resumes or personal data.**
 
 - The prototype processes documents in the browser. Extracted text is stored temporarily in the browser's IndexedDB, **not in a Rolevia cloud database**.
-- Local records expire 24 hours after the last edit, with cleanup when the page next opens or during an active session. Use **Privacy & retention** to delete them sooner.
+- Local records expire 6 hours after the last saved change, with cleanup when the page next opens or during an active session. Use **Privacy & retention** to delete them sooner.
 - This is **not** a production GDPR-compliant recruitment platform: there is no account authentication, encrypted application storage, multi-user workspace, audit logging, or enterprise access control.
 - LinkedIn data is not automatically retrieved or scraped. The recruiter must provide the information.
 - Matching combines **reviewable multi-dimensional rules, related-wording suggestions, and an optional free browser-local AI evidence explorer**, not a fully trained or validated AI screening model. A human recruiter must assess all candidates independently.
