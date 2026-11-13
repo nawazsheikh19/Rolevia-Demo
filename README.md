@@ -90,6 +90,20 @@ GitHub Pages deployment is handled by `.github/workflows/deploy.yml`; ensure the
 **Rolevia is an experimental decision-support tool. It is not suitable for real employment decisions or processing actual applicant information in its current form.**
 
 
+## Mock data test lab — no applicant files needed
+
+The **Mock test data** section at the top of **Job & uploads** supports nine professional families: machine learning/GenAI, operations and supply chain, customer success, finance, healthcare administration, marketing, hospitality, construction, and sales.
+
+Each family has **three different fictional job descriptions**, and each description includes **six different mock CVs with six unique mock LinkedIn profiles**. Total test coverage: **27 job listings, 162 fictional resumes and 162 LinkedIn texts**. The work histories are deliberately invented, not scraped or copied from real applicants.
+
+1. Choose a **Profession** and one of its three **Mock job listings**.
+2. Click **Load mock JD** to populate only the job description and extract its rubric. If a current candidate batch exists, this requires confirmation before clearing it.
+3. Click **Add 6 mock resumes** to populate the matching fictional batch, respecting the maximum 30 candidates. This action requires the selected mock JD already be loaded.
+4. Or click **Load full mock test** to populate the JD, rubric and six resumes together.
+5. Open **Candidate ranking** and select any mock candidate. Click **Load mock LinkedIn profile** to add that fictional candidate's LinkedIn text and test the evidence comparison.
+
+Mock test data is clearly labeled as fictional and must never be interpreted as real candidate evidence. Review the rubric and generated results before assessing the product's usefulness.
+
 ## Recruiter interview and shortlist workflow
 
 1. Open **Candidate ranking**, select a candidate and review requirements ordered by priority (5 highest, 1 lowest).
