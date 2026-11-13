@@ -49,7 +49,7 @@ at=lower.indexOf(normalize(alias),at+1);
 }
 return null;
 }
-function make(label,kind,aliases,weight,priority="required",extra={}){return {label,kind,aliases,weight,priority,...extra}}
+function make(label,kind,aliases,weight,priority="required",extra={}){return {label,kind,aliases,weight:priority==="preferred"?Math.min(weight,2):weight,priority,...extra}}
 function priorityFor(job,term){
 const line=String(job).split(/[\n.;]+/).find(l=>phrase(l,term));
 return line&&/\b(preferred|desirable|nice.to.have|bonus|advantageous|ideally)\b/i.test(line)?"preferred":"required";
