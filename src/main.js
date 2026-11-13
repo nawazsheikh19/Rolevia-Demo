@@ -38,14 +38,14 @@ const sampleBar=dom("div",{class:"sample-bar"},[
   if(data.candidates.length&&!confirm("Replace the current workspace with fictional sample candidates?"))return;
   const sample=SCENARIOS[examplePicker.value];
   semanticByCandidate.clear();
-  data={job:sample.job,criteria:criteriaFromJob(sample.job),selectedIds:[],questionSets:{},deletedQuestionTexts:{},candidates:sample.candidates.map((candidate,i)=>({
+  data={job:sample.job,criteria:criteriaFromJob(sample.job),selectedIds:[],questionSets:{},candidates:sample.candidates.map((candidate,i)=>({
    ...candidate,id:crypto.randomUUID(),filename:"synthetic-"+(i+1)+".txt",sampleLinkedIn:candidate.linkedin||"",linkedin:""
   })),selected:null,savedAt:0};
   save();alertUser(sample.label+" example loaded. Adjust criteria, then explore the shortlist.");
  },"secondary")
 ]);
 container.append(sampleBar);
-const columns=dom("div",{class:"columns"}),job=section("Job description","Paste job requirements or upload a PDF, Word, or text document.");const jobfile=dom("input",{type:"file",accept:".pdf,.docx,.txt",class:"control"});jobfile.onchange=async()=>{try{data.job=await parseFile(jobfile.files[0]);data.criteria=criteriaFromJob(data.job);data.questionSets={};data.deletedQuestionTexts={};save();alertUser(data.criteria.length+" suggested criteria found. Verify each extracted requirement before ranking.")}catch(e){alertUser(e.message)}};const area=dom("textarea",{class:"control big",placeholder:"Paste role requirements here...",maxlength:"30000",value:data.job});area.oninput=()=>{data.job=area.value;save()};job.append(field("Import job description",jobfile),field("Role requirements",area),button("Generate criteria",()=>{data.job=area.value;data.criteria=criteriaFromJob(data.job);save();alertUser(data.criteria.length+" suggested criteria found across job requirements. Review unfamiliar items and weights before ranking.")}));const cr=dom("div",{class:"rubric"});cr.append(dom("h3",{text:"Extracted job criteria ("+data.criteria.length+")"}),dom("p",{class:"muted",text:"Priority weights: 5 = highest importance, 1 = lowest. Scores reflect weighted document evidence, not suitability. Required vs preferred is a separate label; review both before ranking."}),dom("div",{class:"priority-scale"},[
+const columns=dom("div",{class:"columns"}),job=section("Job description","Paste job requirements or upload a PDF, Word, or text document.");const jobfile=dom("input",{type:"file",accept:".pdf,.docx,.txt",class:"control"});jobfile.onchange=async()=>{try{data.job=await parseFile(jobfile.files[0]);data.criteria=criteriaFromJob(data.job);data.questionSets={};save();alertUser(data.criteria.length+" suggested criteria found. Verify each extracted requirement before ranking.")}catch(e){alertUser(e.message)}};const area=dom("textarea",{class:"control big",placeholder:"Paste role requirements here...",maxlength:"30000",value:data.job});area.oninput=()=>{data.job=area.value;save()};job.append(field("Import job description",jobfile),field("Role requirements",area),button("Generate criteria",()=>{data.job=area.value;data.criteria=criteriaFromJob(data.job);save();alertUser(data.criteria.length+" suggested criteria found across job requirements. Review unfamiliar items and weights before ranking.")}));const cr=dom("div",{class:"rubric"});cr.append(dom("h3",{text:"Extracted job criteria ("+data.criteria.length+")"}),dom("p",{class:"muted",text:"Priority weights: 5 = highest importance, 1 = lowest. Scores reflect weighted document evidence, not suitability. Required vs preferred is a separate label; review both before ranking."}),dom("div",{class:"priority-scale"},[
 dom("span",{text:"1 · Lowest"}),dom("span",{text:"2 · Low"}),dom("span",{text:"3 · Medium"}),dom("span",{text:"4 · High"}),dom("span",{text:"5 · Highest"})
 ]));data.criteria.map((x,i)=>({x,i})).sort((a,b)=>byPriority(a.x,b.x)).forEach(({x,i})=>{const line=dom("div",{class:"criterion"}),name=dom("input",{class:"control",value:x.label,"aria-label":"Job requirement"}),weight=dom("select",{class:"control","aria-label":"Priority: 1 lowest, 5 highest"});for(let w=1;w<=5;w++){const o=dom("option",{value:w,text:String(w)});o.selected=w===Number(x.weight);weight.append(o)}name.onchange=()=>{x.label=name.value.trim().slice(0,80);x.aliases=[x.label];x.kind="custom";delete x.minYears;delete x.experienceFocus;save();render()};weight.onchange=()=>{x.weight=Number(weight.value);save()};line.append(name,weight,button("×",()=>{data.criteria.splice(i,1);save();render()},"plain"));cr.append(dom("div",{class:"criterion-meta",text:(x.kind||"custom").replace(/\b\w/g,c=>c.toUpperCase())+" · "+(x.priority||"required")+" · Priority "+x.weight+"/5"}));cr.append(line)});cr.append(button("+ Add requirement",()=>{data.criteria.push({label:"New requirement",kind:"custom",priority:"required",aliases:["New requirement"],weight:3});save();render()}));job.append(cr);const uploads=section("Candidate resumes","Upload multiple PDF, DOCX, or TXT files, up to 5MB each.");
 const ackInput=dom("input",{type:"checkbox",checked:!!data.syntheticConfirmed,"aria-label":"Confirm only fictional candidate files",on:{change:e=>{data.syntheticConfirmed=!!e.target.checked;save()}}});
@@ -68,7 +68,7 @@ const fileinput=dom("input",{type:"file",accept:".pdf,.docx,.txt",multiple:"",cl
   }catch(error){alertUser("Candidate list cleared in this tab, but browser storage deletion could not be confirmed. Use Privacy & retention to remove saved data before closing.");}
  },"danger",data.candidates.length===0)
 ]);
-uploads.append(drop,batchHeader);for(const c of data.candidates)uploads.append(dom("div",{class:"file"},[dom("span",{text:c.name+" · "+c.filename}),button("Remove",()=>{data.candidates=data.candidates.filter(x=>x.id!==c.id);data.selectedIds=selectedIds().filter(id=>id!==c.id);if(data.selected===c.id)data.selected=null;delete data.questionSets?.[c.id+":resume"];delete data.questionSets?.[c.id+":profile"];delete data.deletedQuestionTexts?.[c.id+":resume"];delete data.deletedQuestionTexts?.[c.id+":profile"];semanticByCandidate.delete(c.id);save();render()},"plain")]));uploads.append(dom("div",{class:"safe",text:"Pilot safety: documents are parsed locally and text is stored in this browser for 24 hours after the latest edit. Use synthetic profiles only; this is not an enterprise-secure database."}),button("View ranked shortlist →",()=>{view="results";render()},"primary full",!data.candidates.length||!data.criteria.length));columns.append(job,uploads);container.append(columns)}
+uploads.append(drop,batchHeader);for(const c of data.candidates)uploads.append(dom("div",{class:"file"},[dom("span",{text:c.name+" · "+c.filename}),button("Remove",()=>{data.candidates=data.candidates.filter(x=>x.id!==c.id);data.selectedIds=selectedIds().filter(id=>id!==c.id);if(data.selected===c.id)data.selected=null;delete data.questionSets?.[c.id+":resume"];delete data.questionSets?.[c.id+":profile"];semanticByCandidate.delete(c.id);save();render()},"plain")]));uploads.append(dom("div",{class:"safe",text:"Pilot safety: documents are parsed locally and text is stored in this browser for 24 hours after the latest edit. Use synthetic profiles only; this is not an enterprise-secure database."}),button("View ranked shortlist →",()=>{view="results";render()},"primary full",!data.candidates.length||!data.criteria.length));columns.append(job,uploads);container.append(columns)}
 
 function renderQuestionEditor(parent,candidate,stage,checks,count){
  data.questionSets??={};
@@ -76,8 +76,6 @@ function renderQuestionEditor(parent,candidate,stage,checks,count){
  const alreadyCreated=Object.prototype.hasOwnProperty.call(data.questionSets,key);
  const current=(data.questionSets[key]||[]).filter(q=>q&&typeof q.text==="string"&&q.text.trim());
  const questions=alreadyCreated?current:fillQuestionSet(checks,[],count,stage);
- data.deletedQuestionTexts??={};
- data.deletedQuestionTexts[key]??=[];
  questions.sort((a,b)=>Number(b.source==="Recruiter")-Number(a.source==="Recruiter"));
  data.questionSets[key]=questions;
  const panel=dom("div",{class:"questions-panel"});
@@ -90,8 +88,6 @@ function renderQuestionEditor(parent,candidate,stage,checks,count){
   const bar=dom("div",{class:"question-head"});
   bar.append(dom("strong",{class:"question-context",text:"Q"+(i+1)+" · "+(q.source==="Recruiter"?"★ Recruiter priority · Your question":"Priority "+(q.priority||1)+"/5 · "+(q.category||"role")+(q.source?.includes("Qwen")?" · AI DRAFT — REVIEW":""))}),
    dom("button",{class:"plain remove-question","aria-label":"Remove question "+(i+1)+" without replacement",title:"Remove this question",text:"×",on:{click:()=>{
-    data.deletedQuestionTexts[key].push(q.text);
-    data.deletedQuestionTexts[key]=data.deletedQuestionTexts[key].slice(-100);
     questions.splice(i,1);
     data.questionSets[key]=questions;
     save();render();
@@ -109,7 +105,7 @@ function renderQuestionEditor(parent,candidate,stage,checks,count){
   row.append(button("Another question",()=>{
     const basis=checks.find(c=>c.label===q.requirement)||checks[i%Math.max(1,checks.length)]||{label:q.requirement||"Job responsibilities",kind:q.category||"requirement",weight:q.priority||1};
     const oldHistory=(q.history||[]).concat(q.text).slice(-80);
-    const seen=questions.filter((_,index)=>index!==i).concat(oldHistory.map(text=>({text})),data.deletedQuestionTexts[key].map(text=>({text})));
+    const seen=questions.filter((_,index)=>index!==i).concat(oldHistory.map(text=>({text})));
     const replacement=alternativeQuestion([basis],seen,stage,(q.revision||0)+1);
     questions[i]={...q,...replacement,requirement:basis.label,history:oldHistory,revision:(q.revision||0)+1,source:"Grounded alternative"};
     data.questionSets[key]=questions;save();render();
@@ -139,8 +135,7 @@ function renderQuestionEditor(parent,candidate,stage,checks,count){
  });
  panel.append(button("+ Add suggested question",()=>{
   const basis=checks.length?checks:[{label:"Responsibilities in this role",kind:"requirement",weight:3}];
-  const history=(data.deletedQuestionTexts[key]||[]).map(text=>({text}));
-  const next=alternativeQuestion(basis,[...questions,...history],stage,questions.length+history.length);
+  const next=alternativeQuestion(basis,questions,stage,questions.length);
   questions.push(next);data.questionSets[key]=questions;save();render();
  },"secondary"));
  const custom=dom("textarea",{class:"control question-edit",placeholder:"Write your own job-related interview question…",rows:"2",maxlength:"450"});
@@ -258,7 +253,7 @@ function renderShortlist(container){
   clearTimeout(saveTimer);
   data.candidates=data.candidates.filter(c=>ids.has(c.id));
   data.selectedIds=data.candidates.map(c=>c.id);data.selected=null;
-  data.questionSets=Object.fromEntries(Object.entries(data.questionSets||{}).filter(([key])=>[...ids].some(id=>key.startsWith(id+":"))));data.deletedQuestionTexts=Object.fromEntries(Object.entries(data.deletedQuestionTexts||{}).filter(([key])=>[...ids].some(id=>key.startsWith(id+":"))));
+  data.questionSets=Object.fromEntries(Object.entries(data.questionSets||{}).filter(([key])=>[...ids].some(id=>key.startsWith(id+":"))));
   semanticByCandidate.clear();active=data.candidates[0]?.id||null;data.savedAt=Date.now();
   try{await database("write",{...data,expires:data.savedAt+DAY});alertUser("Deleted "+removed+" unselected candidates; retained "+selected.length+".")}
   catch{alertUser("Cleared unselected candidates in the current tab, but storage persistence could not be confirmed.")}
@@ -270,6 +265,6 @@ async function parseFile(file){if(!file)throw Error("Choose a document.");if(fil
 async function upload(files){
  if(!data.syntheticConfirmed){alertUser("Before uploading, confirm that all CVs are fictional and contain no real personal data.");return}
  let ok=0,errors=[];for(const file of files.slice(0,Math.max(0,30-data.candidates.length))){try{const resume=await parseFile(file);data.candidates.push({id:crypto.randomUUID(),name:file.name.replace(/\.[^.]+$/,"").replace(/[_-]+/g," ").slice(0,100),filename:file.name,resume,linkedin:""});ok++}catch(e){errors.push(file.name+": "+e.message)}}save();alertUser(ok+" resume(s) added. "+errors.join("; "))}
-async function boot(){try{const stored=await database("read");if(stored?.expires>Date.now()){data={job:stored.job||"",criteria:stored.criteria||[],candidates:stored.candidates||[],selected:stored.selected||null,selectedIds:Array.isArray(stored.selectedIds)?stored.selectedIds:(stored.selected?[stored.selected]:[]),questionSets:stored.questionSets||{},deletedQuestionTexts:stored.deletedQuestionTexts||{},syntheticConfirmed:!!stored.syntheticConfirmed,savedAt:stored.savedAt||0};if(data.candidates.length)view="results"}else if(stored){await database("delete");notice="Expired records removed."}}catch{notice="Browser storage unavailable."}render()}
+async function boot(){try{const stored=await database("read");if(stored?.expires>Date.now()){data={job:stored.job||"",criteria:stored.criteria||[],candidates:stored.candidates||[],selected:stored.selected||null,selectedIds:Array.isArray(stored.selectedIds)?stored.selectedIds:(stored.selected?[stored.selected]:[]),questionSets:stored.questionSets||{},syntheticConfirmed:!!stored.syntheticConfirmed,savedAt:stored.savedAt||0};if(data.candidates.length)view="results"}else if(stored){await database("delete");notice="Expired records removed."}}catch{notice="Browser storage unavailable."}render()}
 setInterval(async()=>{if(data.savedAt&&Date.now()>data.savedAt+DAY){await database("delete").catch(()=>{});clearTimeout(saveTimer);data={job:"",criteria:[],candidates:[],selected:null,savedAt:0};view="setup";alertUser("24-hour retention elapsed. Workspace cleared.")}},60000);
 boot();
