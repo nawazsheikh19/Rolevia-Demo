@@ -1,8 +1,8 @@
 # Rolevia — Recruiter Demo
 
-**A simpler way to review candidate-to-role alignment.**
+**An evidence-first candidate-to-role intelligence demo — not a full ATS.**
 
-Rolevia is an early-stage talent intelligence prototype designed to help recruiters compare candidate resumes with a job description, identify supporting evidence, and prepare a structured shortlist for **human review**.
+Rolevia is an early-stage talent intelligence prototype designed to help recruiters compare candidate resumes with a job description, identify supporting evidence across skills, experience, responsibilities, qualifications and industry context, and prepare a structured shortlist for **human review**.
 
 ### 🌐 Open the demo
 
@@ -11,6 +11,10 @@ Rolevia is an early-stage talent intelligence prototype designed to help recruit
 No installation or account is required. Open the link in Chrome or Microsoft Edge on a Windows laptop or other modern computer. The first load requires an internet connection.
 
 > **Prototype status:** The link is the intended GitHub Pages address. If it does not load, the website's GitHub Actions deployment may still need to succeed.
+
+## IMPORTANT DEMO NOTICE
+
+This is a free evaluation preview, **not a live recruitment product**. Use fictional CVs and jobs only. Rankings are not hiring decisions, and the browser's temporary storage is not an enterprise database.
 
 ## What can you try?
 
@@ -31,7 +35,7 @@ No installation or account is required. Open the link in Chrome or Microsoft Edg
 - Local records expire 24 hours after the last edit, with cleanup when the page next opens or during an active session. Use **Privacy & retention** to delete them sooner.
 - This is **not** a production GDPR-compliant recruitment platform: there is no account authentication, encrypted application storage, multi-user workspace, audit logging, or enterprise access control.
 - LinkedIn data is not automatically retrieved or scraped. The recruiter must provide the information.
-- Matching is an explainable **keyword/phrase-based prototype**, not a fully trained or validated AI screening model. A human recruiter must assess all candidates independently.
+- Matching is an explainable **multi-dimensional, heuristic prototype**, not a fully trained or validated AI screening model. A human recruiter must assess all candidates independently.
 
 ## Feedback we're looking for
 
@@ -48,7 +52,7 @@ Please share observations with the person who invited you to test Rolevia. **Do 
 
 ### For developers
 
-This repository contains the public static proof of concept. The principal development repository, **Rolevia**, is maintained separately and privately.
+This repository contains only the **public, synthetic-data demonstration**. The private **Rolevia** repository is the source of truth. Approved application files are intended to flow one way from private Rolevia to this public demo after tests pass; the private repository owner must configure the cross-repository release secret. This demo does not contain the production backend or authentic applicant data.
 
 To run locally with Node.js 22:
 
