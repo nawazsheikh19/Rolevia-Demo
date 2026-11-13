@@ -125,34 +125,8 @@ function renderQuestionEditor(parent,candidate,stage,checks,count){
  parent.append(panel);
 }
 
-function renderResults(container){const list=ranked();heading(container,"02 / CANDIDATE INTELLIGENCE","Ranked shortlist","The evidence-coverage score considers job-related skills, relevant experience, responsibilities, qualifications and industry context. It is not a validated suitability prediction.");if(!list.length){container.append(button("Add candidates",()=>{view="setup";render()}));return}active=list.some(c=>c.id===active)?active:list[0].id;const chosen=list.find(c=>c.id===active),assessment=chosen.enriched||chosen.base;const columns=dom("div",{class:"results"}),left=section("Resume-based ranking","All candidates are ranked by the same original resume-only criteria.");list.forEach((c,i)=>{const item=dom("div",{class:"candidate "+(c.id===active?"active":"")},[dom("div",{class:"candidatehead"},[dom("strong",{text:"#"+(i+1)+" "+c.name}),dom("b",{class:"percent",text:(c.base.percent??"—")+"%"})]),dom("div",{class:"progress"},[dom("i",{style:"width:"+(c.base.percent??0)+"%"})]),dom("small",{text:c.base.evidenced+" of "+c.base.total+" criteria evidenced"})]);item.onclick=()=>{active=c.id;render()};left.append(item)});const csv=button("↓ Export anonymous CSV",()=>{const rows=[["Rank","Candidate","Resume coverage %","Evidence count","Total criteria","LinkedIn coverage %"],...list.map((c,i)=>[i+1,"Candidate "+(i+1),c.base.percent,c.base.evidenced,c.base.total,c.enriched?.percent??""])];const blob=new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"});const url=URL.createObjectURL(blob);const link=dom("a",{href:url,download:"rolevia-anonymous-ranking.csv"});link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});left.append(csv);left.append(button("Shortlist ("+selectedIds().length+")",()=>{view="shortlist";render()},"primary full"));const right=section(chosen.name,"Resume score: "+(chosen.base.percent??"—")+"%"+(chosen.enriched?" · With LinkedIn: "+chosen.enriched.percent+"%":""));right.append(dom("h3",{text:"Evidence by requirement category"}));for(const [category,count] of Object.entries(assessment.groups||{}))right.append(dom("div",{class:"group-summary"},[dom("strong",{text:category.replace(/\b\w/g,c=>c.toUpperCase())}),dom("span",{text:count.supported+" / "+count.total+" evidenced"})]));right.append(dom("h3",{text:"Documented requirement evidence"}));for(const c of [...assessment.checks].sort(byPriority))right.append(dom("div",{class:"evidence"},[dom("b",{class:c.matched?"good":"unknown",text:c.matched?"✓":"?"}),dom("div",{},[dom("strong",{text:"Priority "+c.weight+"/5 · "+c.label+" ["+(c.kind||"skill")+", "+(c.priority||"required")+"] · "+(c.matched?c.source+(c.matchMethod==="related wording — verify"?" · Related wording — verify":""):"Not established")}),dom("small",{text:c.evidence||"No direct evidence found. Verify with the candidate."})])]));const interview=dom("div",{class:"questions-panel"});
-interview.append(dom("h3",{text:"CV-only review · Suggested interview questions"}),dom("p",{text:"Prepared before LinkedIn. These questions target the highest-priority role requirements and use CV evidence where available. Ask for concrete examples rather than treating gaps as failures."}));
-for(const q of interviewQuestions(chosen.base.checks,{limit:6})){
- interview.append(dom("div",{class:"question-row"},[
-  dom("div",{class:"question-context",text:"Priority "+q.priority+"/5 · "+q.category+" · "+q.status}),
-  dom("p",{class:"question-text",text:q.text}),
-  ...(q.context?[dom("small",{text:"CV basis: "+q.context})]:[])
- ]));
-}
-const firstQuestionCheck=[...chosen.base.checks].sort(byPriority)[0];
-if(firstQuestionCheck){
- const savedDraft=draftedQuestions.get(chosen.id+"::"+firstQuestionCheck.label);
- const controls=dom("div",{class:"question-ai-controls"});
- controls.append(dom("p",{text:"Optional free AI: draft one alternative question for the highest-priority requirement using FLAN-T5 Small. First use downloads a model; this may be slow on ordinary laptops. AI questions require recruiter review."}));
- controls.append(button(questionAiBusy?"Generating question…":"Draft alternative with free AI",async()=>{
-  if(questionAiBusy)return;
-  questionAiBusy=true;alertUser("Loading the free local question model; no candidate text is intentionally sent for inference.");
-  try{
-   const answer=await draftInterviewQuestion(firstQuestionCheck);
-   draftedQuestions.set(chosen.id+"::"+firstQuestionCheck.label,answer);
-   alertUser("An alternative question draft is ready below. Check it for relevance and appropriateness.");
-  }catch(error){alertUser("No suitable AI question was produced: "+String(error?.message||error).slice(0,160)+". Existing questions remain available.")}
-  finally{questionAiBusy=false;render()}
- },"secondary",questionAiBusy));
- if(savedDraft)controls.append(dom("div",{class:"ai-question-draft"},[dom("small",{text:"AI-DRAFTED · NOT VERIFIED"}),dom("p",{text:savedDraft.text})]));
- interview.append(controls);
-}
-right.append(interview);
+function renderResults(container){const list=ranked();heading(container,"02 / CANDIDATE INTELLIGENCE","Ranked shortlist","The evidence-coverage score considers job-related skills, relevant experience, responsibilities, qualifications and industry context. It is not a validated suitability prediction.");if(!list.length){container.append(button("Add candidates",()=>{view="setup";render()}));return}active=list.some(c=>c.id===active)?active:list[0].id;const chosen=list.find(c=>c.id===active),assessment=chosen.enriched||chosen.base;const columns=dom("div",{class:"results"}),left=section("Resume-based ranking","All candidates are ranked by the same original resume-only criteria.");list.forEach((c,i)=>{const item=dom("div",{class:"candidate "+(c.id===active?"active":"")},[dom("div",{class:"candidatehead"},[dom("strong",{text:"#"+(i+1)+" "+c.name}),dom("b",{class:"percent",text:(c.base.percent??"—")+"%"})]),dom("div",{class:"progress"},[dom("i",{style:"width:"+(c.base.percent??0)+"%"})]),dom("small",{text:c.base.evidenced+" of "+c.base.total+" criteria evidenced"})]);item.onclick=()=>{active=c.id;render()};left.append(item)});const csv=button("↓ Export anonymous CSV",()=>{const rows=[["Rank","Candidate","Resume coverage %","Evidence count","Total criteria","LinkedIn coverage %"],...list.map((c,i)=>[i+1,"Candidate "+(i+1),c.base.percent,c.base.evidenced,c.base.total,c.enriched?.percent??""])];const blob=new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"});const url=URL.createObjectURL(blob);const link=dom("a",{href:url,download:"rolevia-anonymous-ranking.csv"});link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});left.append(csv);left.append(button("Shortlist ("+selectedIds().length+")",()=>{view="shortlist";render()},"primary full"));const right=section(chosen.name,"Resume score: "+(chosen.base.percent??"—")+"%"+(chosen.enriched?" · With LinkedIn: "+chosen.enriched.percent+"%":""));right.append(dom("h3",{text:"Evidence by requirement category"}));for(const [category,count] of Object.entries(assessment.groups||{}))right.append(dom("div",{class:"group-summary"},[dom("strong",{text:category.replace(/\b\w/g,c=>c.toUpperCase())}),dom("span",{text:count.supported+" / "+count.total+" evidenced"})]));right.append(dom("h3",{text:"Documented requirement evidence"}));for(const c of [...assessment.checks].sort(byPriority))right.append(dom("div",{class:"evidence"},[dom("b",{class:c.matched?"good":"unknown",text:c.matched?"✓":"?"}),dom("div",{},[dom("strong",{text:"Priority "+c.weight+"/5 · "+c.label+" ["+(c.kind||"skill")+", "+(c.priority||"required")+"] · "+(c.matched?c.source+(c.matchMethod==="related wording — verify"?" · Related wording — verify":""):"Not established")}),dom("small",{text:c.evidence||"No direct evidence found. Verify with the candidate."})])]));renderQuestionEditor(right,chosen,"resume",chosen.base.checks,6);
+
 const semanticPanel=dom("div",{class:"semantic-panel"});
 semanticPanel.append(dom("h3",{text:"Optional AI · Related experience explorer"}),
 dom("p",{text:"Search the résumé for meaningfully related project statements using a free Hugging Face model. The model downloads to your browser on first use. Suggestions never change the evidence score."}));
@@ -186,7 +160,7 @@ if(chosen.sampleLinkedIn&&!chosen.linkedin){
 }
 right.append(button("Update LinkedIn assessment",()=>{const original=data.candidates.find(c=>c.id===chosen.id);original.linkedin=li.value.slice(0,20000);save();alertUser("LinkedIn compared with the résumé. Review the new evidence and follow-up questions.")}));if(chosen.linkedin?.trim()){
  const delta=profileDelta(chosen,data.criteria),card=dom("div",{class:"profile-delta"});
- card.append(dom("h3",{text:"LinkedIn comparison · What changed?"}),
+ card.append(dom("h3",{text:"LinkedIn comparison · What changed after adding LinkedIn?"}),
  dom("p",{text:"Stage 1: CV-only evidence → Stage 2: CV + candidate-provided LinkedIn. This is not verified information, and the original candidate ranking does not change."}),
  dom("div",{class:"stage-comparison"},[
   dom("div",{},[dom("small",{text:"BEFORE · CV only"}),dom("strong",{text:(delta.before.percent??"—")+"%"}),dom("span",{text:delta.before.evidenced+" supported requirements"})]),
@@ -194,9 +168,9 @@ right.append(button("Update LinkedIn assessment",()=>{const original=data.candid
   dom("div",{},[dom("small",{text:"AFTER · CV + LinkedIn"}),dom("strong",{text:(delta.after.percent??"—")+"%"}),dom("span",{text:delta.after.evidenced+" supported requirements"})])
  ]),
  dom("div",{class:"delta-counts"},[
-  dom("div",{},[dom("strong",{text:"+"+delta.newlyEvidenced.length}),dom("small",{text:"New LinkedIn-only claims"})]),
-  dom("div",{},[dom("strong",{text:String(delta.corroborated)}),dom("small",{text:"Already in CV"})]),
-  dom("div",{},[dom("strong",{text:String(delta.unresolved.length)}),dom("small",{text:"Still unconfirmed"})])
+  dom("div",{},[dom("strong",{text:"+"+delta.newlyEvidenced.length}),dom("small",{text:"New requirements with matching text found only in LinkedIn"})]),
+  dom("div",{},[dom("strong",{text:String(delta.corroborated)}),dom("small",{text:"Requirements already supported by the CV (not added by LinkedIn)"})]),
+  dom("div",{},[dom("strong",{text:String(delta.unresolved.length)}),dom("small",{text:"Requirements with no matching text in either document (not a negative finding)"})])
  ]),
  dom("p",{text:delta.note}));
  if(delta.newlyEvidenced.length){
@@ -208,16 +182,14 @@ right.append(button("Update LinkedIn assessment",()=>{const original=data.candid
    ])
   ]));
  }else card.append(dom("p",{text:"No additional job requirements were supported by the profile text. That is not a negative signal."}));
- if(delta.linkedinQuestions.length){
-  card.append(dom("h3",{text:"Questions about LinkedIn-only claims"}));
-  for(const q of delta.linkedinQuestions)card.append(dom("div",{class:"question-row"},[
-   dom("div",{class:"question-context",text:"Priority "+q.priority+"/5 · Profile-only evidence"}),
-   dom("p",{class:"question-text",text:q.text})
-  ]));
- }
+
  right.append(card);
+ const linkedInOnly=delta.newlyEvidenced.map(item=>({label:item.label,kind:item.kind,weight:item.weight,matched:true,source:"LinkedIn",evidence:item.evidence}));
+ const outstanding=delta.after.checks.filter(item=>!item.matched);
+ const basis=[...linkedInOnly,...outstanding];
+ renderQuestionEditor(right,chosen,"profile",basis.length?basis:chosen.base.checks,5);
 }
-right.append(dom("div",{class:"safe",text:"Profile claims are unverified; LinkedIn is optional, and human review remains essential."}));
+right.append(dom("div",{class:"safe",text:"Counts refer to job requirements, not claims proven to be true. LinkedIn is optional, and human review is essential. Nothing here confirms a candidate has or lacks a skill."}));
 right.append(button(selectedIds().includes(chosen.id)?"✓ Selected · Remove from shortlist":"Choose candidate",()=>toggleSelected(chosen.id),selectedIds().includes(chosen.id)?"secondary":"primary"));
 right.append(button("View shortlist ("+selectedIds().length+")",()=>{view="shortlist";render()},"secondary"));
 columns.append(left,right);container.append(columns)}
