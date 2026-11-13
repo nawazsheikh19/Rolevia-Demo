@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {validateQuestionDraft} from "./question-ai.js";
+import {validateQuestionDraft,sanitizedJobRequirement} from "./question-ai.js";
 test("rejects unsafe and irrelevant AI question drafts",()=>{
  assert.equal(validateQuestionDraft("Are you married, and have you used Python?","Python"),null);
  assert.equal(validateQuestionDraft("Tell me about your role in finance forecasting?","Kubernetes"),null);
@@ -13,4 +13,15 @@ test("accepts a grounded, job-related behavioral draft",()=>{
 test("rejects drafts assuming unsupported candidate achievements",()=>{
  assert.equal(validateQuestionDraft("You built a Python platform at Google, how did it help?","Python"),null);
  assert.equal(validateQuestionDraft("Your work at Acme with Python was successful, correct?","Python"),null);
+});
+
+test("sanitizes multiline job requirements without corrupting ordinary words",()=>{
+ const result=sanitizedJobRequirement("Financial reporting\n and React<ignore>");
+ assert.ok(result.includes("Financial reporting and React"));
+ assert.ok(!result.includes("\n"));
+ assert.ok(!result.includes("<"));
+});
+test("does not draft sensitive personal or family-history questions",()=>{
+ assert.equal(validateQuestionDraft("How many children do you have and are you familiar with Python?","Python"),null);
+ assert.equal(validateQuestionDraft("What medical history do you have relevant to Python?","Python"),null);
 });
