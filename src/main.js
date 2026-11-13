@@ -94,6 +94,7 @@ function renderQuestionEditor(parent,candidate,stage,checks,count){
   };
   row.append(editor);
   if(q.context)row.append(dom("small",{text:"Referenced submitted text: "+q.context}));
+  if(q.source!=="Recruiter"){
   row.append(button("Another question",()=>{
     const basis=checks.find(c=>c.label===q.requirement)||checks[i%Math.max(1,checks.length)]||{label:q.requirement||"Job responsibilities",kind:q.category||"requirement",weight:q.priority||1};
     const oldHistory=(q.history||[]).concat(q.text).slice(-80);
@@ -122,6 +123,7 @@ function renderQuestionEditor(parent,candidate,stage,checks,count){
       data.questionSets[key]=questions;save();alertUser("The AI model was unavailable. A distinct local alternative is ready.");
     }finally{questionAiBusy=false;render()}
   },"secondary",questionAiBusy));
+  }
   panel.append(row);
  });
  const custom=dom("textarea",{class:"control question-edit",placeholder:"Write your own job-related interview question…",rows:"2",maxlength:"450"});
