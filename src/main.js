@@ -75,17 +75,17 @@ function renderQuestionEditor(parent,candidate,stage,checks,count){
  const panel=dom("div",{class:"questions-panel"});
  panel.append(dom("h3",{text:(stage==="resume"?"CV interview questions":"Post-LinkedIn interview questions")+" ("+questions.length+")"}),
  dom("p",{text:stage==="resume"?"Begin with six suggested HR-friendly questions. × removes a question without replacement. Another question replaces only that one with a new distinct draft. Your own priority questions appear first.":"Begin with five optional follow-ups from LinkedIn-only claims and the job description. × permanently removes a question from this list; it does not create a replacement."}));
- if(questionModelError())panel.append(dom("p",{class:"safe",text:"The optional AI model cannot currently download: "+questionModelError().slice(0,130)+". Grounded question alternatives work without it."}),
+ if(questionModelError())panel.append(dom("p",{class:"safe",text:"Optional AI question model unavailable: "+questionModelError().slice(0,130)+". Grounded question alternatives work without it."}),
  button("Retry AI download",()=>{resetQuestionModel();alertUser("AI download retry enabled. Question replacements will continue working offline.")},"plain"));
  questions.forEach((q,i)=>{
   const row=dom("div",{class:"question-row"+(q.source==="Recruiter"?" recruiter-priority-question":"")});
   const bar=dom("div",{class:"question-head"});
   bar.append(dom("strong",{class:"question-context",text:"Q"+(i+1)+" · "+(q.source==="Recruiter"?"★ Recruiter priority · Your question":"Priority "+(q.priority||1)+"/5 · "+(q.category||"role"))}),
-   button("×",()=>{
+   dom("button",{class:"plain remove-question","aria-label":"Remove question "+(i+1)+" without replacement",title:"Remove this question",text:"×",on:{click:()=>{
     questions.splice(i,1);
     data.questionSets[key]=questions;
     save();render();
-   },"plain"));
+   }}}));
   row.append(bar);
   const editor=dom("textarea",{class:"control question-edit","aria-label":"Interview question "+(i+1),rows:"2",maxlength:"450",value:q.text});
   editor.onchange=()=>{
