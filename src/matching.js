@@ -25,6 +25,100 @@ const duties={
 "Data pipelines":["build data pipelines","built data pipelines","etl pipelines"],
 "Technical leadership":["lead engineering team","led engineering team","technical leadership","led a team"]
 };
+
+// Extra role vocabulary is a fallback, not a fixed ceiling on requirements.
+const extendedSkills={
+"TypeScript":["typescript"],"JavaScript":["javascript","node.js","nodejs"],
+"Go":["golang","go language"],"C#":["c#","c sharp"],"C++":["c++"],
+"Terraform":["terraform"],"CI/CD":["ci/cd","continuous integration","continuous delivery"],
+"Git":["git","github","gitlab"],"Linux":["linux"],"REST APIs":["rest api","restful api","rest apis"],
+"GraphQL":["graphql"],"Microservices":["microservices","microservice architecture"],
+"PostgreSQL":["postgresql","postgres"],"MongoDB":["mongodb"],"Redis":["redis"],
+"Snowflake":["snowflake"],"Databricks":["databricks"],"Spark":["apache spark","pyspark"],
+"Kafka":["kafka"],"Airflow":["airflow"],"dbt":["dbt"],"Tableau":["tableau"],
+"Power BI":["power bi","powerbi"],"Excel":["excel"],"Salesforce":["salesforce"],
+"SAP":["sap"],"CRM":["crm","customer relationship management"],
+"Figma":["figma"],"Agile":["agile","scrum","kanban"],
+"OAuth":["oauth","openid connect","oidc"],"Security":["cybersecurity","information security","security engineering"],
+"API integration":["api integration","system integrations","integrating apis"],
+"Prompt engineering":["prompt engineering"],"LLM evaluation":["llm evaluation","model evaluation","evaluate llms"],
+"Vector databases":["vector database","vector search","pinecone","weaviate","milvus"],
+"LangChain":["langchain"],"LangGraph":["langgraph"],"MCP":["model context protocol","mcp server"],
+"PyTorch":["pytorch"],"TensorFlow":["tensorflow"],"MLOps":["mlops"],
+"Monitoring":["observability","monitoring","prometheus","grafana"],
+"Data visualization":["data visualization","data visualisation"],"ETL":["etl","elt"],
+"Budget management":["budget management","budget planning","managing budgets"],
+"Customer success":["customer success"],"Recruitment":["talent acquisition","recruitment","recruiting"],
+"Negotiation":["negotiation","negotiating"],"Technical writing":["technical writing","documentation"]
+};
+const genericSkip=/\b(?:equal opportunity|our company|we offer|benefits|compensation|salary|holiday allowance|vacation|apply now|please apply|about us|diversity statement|employment opportunity|contact us|working hours|the successful candidate|you will join|our mission|our values|competitive package|free snacks)\b/i;
+const protectedSkip=/\b(?:age|gender|male|female|ethnicity|racial|religion|nationality|citizenship|marital status|pregnancy|disability|sexual orientation|date of birth)\b/i;
+const headings=/^(?:requirements?|qualifications?|what you(?:'ll| will) (?:bring|do)|you (?:have|bring|will)|must.have|nice.to.have|preferred|responsibilities|duties|experience|skills|about (?:you|the role)|the role|essential criteria|desirable criteria|key responsibilities|minimum qualifications|preferred qualifications)\s*:?\s*$/i;
+const cue=/\b(?:experience (?:with|in|using|of)|proficien(?:t|cy) (?:in|with)|expertise (?:in|with)|knowledge of|familiarity with|ability to|capable of|must (?:have|be|know)|required to|responsible for|skilled (?:in|at)|strong (?:understanding of|knowledge of)|hands.on (?:with|experience in)|you(?:'ll| will) (?:build|design|develop|lead|manage|own|deliver|implement|maintain)|(?:build|design|develop|lead|manage|own|deliver|implement|maintain) (?:and\s+\w+\s+)?(?:scalable|reliable|complex|production|cross.functional))\b/i;
+function cleanRequirement(raw){
+ return String(raw).replace(/^[\s•*+\-\d.)]+/,"").replace(/^(?:you(?:'ll| will| should| must)?|we (?:need|are looking for)|required|preferred|essential|desirable)\s*[:\-]?\s*/i,"").replace(/\s+/g," ").replace(/[,:;.\s]+$/,"").trim();
+}
+function segments(text){
+ // Layout matters: bullet points carry intent even when a skills dictionary does not know the term.
+ const lines=String(text||"").replace(/\r/g,"\n").split("\n");
+ const output=[];let section="";let bulletMode=false;
+ for(const line of lines){
+  const trimmed=line.trim();if(!trimmed)continue;
+  if(headings.test(trimmed)){section=trimmed.toLowerCase();bulletMode=true;continue}
+  const bullet=/^\s*(?:[-*•]|\d+[.)])\s+/.test(line);
+  const strict=bullet||bulletMode&&/(?:requirements?|qualifications?|responsibilities|duties|skills|experience|preferred|desirable|must|you have|you bring)/.test(section);
+  const cleaned=cleanRequirement(trimmed);
+  for(const item of cleaned.split(/(?<=[.!?])\s+(?=[A-Z])/)){
+   const phraseText=cleanRequirement(item);
+   if(phraseText)output.push({text:phraseText,strict,section});
+  }
+ }
+ return output;
+}
+function genericCriteria(text,existing){
+ const result=[],seen=new Set(existing.map(x=>normalize(x.label)));
+ const preferredSection=section=>/\b(?:preferred|desirable|nice.to.have)\b/.test(section);
+ const stop=/^(?:a|an|the|and|or|of|to|with|in|on|for|from|using|strong|solid|deep|good|great|excellent|proven|ability|knowledge|experience|expertise|proficiency|familiarity|understanding|working|hands.on|skills?|required|preferred|essential|desirable|minimum|nice|have|be|is|are|you|we|will|should|our)$/i;
+ const add=(label,kind,aliases,preferred,source)=>{
+  label=cleanRequirement(label);
+  if(label.length<3||label.length>125||genericSkip.test(label)||protectedSkip.test(label))return;
+  if(seen.has(normalize(label)))return;
+  // Skip near duplicates of existing canonical requirements.
+  if(existing.some(c=>c.aliases?.some(a=>normalize(a)===normalize(label))))return;
+  seen.add(normalize(label));
+  result.push(make(label,kind,aliases,kind==="responsibility"?4:3,preferred?"preferred":"required",{source:"extracted",jobEvidence:source}));
+ };
+ for(const item of segments(text)){
+  const line=item.text;
+  if(genericSkip.test(line)||protectedSkip.test(line)||headings.test(line)||line.length>250)continue;
+  const preferred=preferredSection(item.section)||/\b(preferred|desirable|nice.to.have|bonus|advantageous)\b/i.test(line);
+  // Recognize known technologies that previous taxonomy missed, even in prose.
+  for(const [label,aliases] of Object.entries(extendedSkills)){
+   if([label,...aliases].some(t=>phrase(line,t)))add(label,"skill",[label,...aliases],preferred,line);
+  }
+  if(!item.strict&&!cue.test(line))continue;
+  const parts=line.split(/[,;]|\s+(?:and|or)\s+(?=[A-Z][A-Za-z0-9+#/. ]{1,35}(?:[,;.]|$))/);
+  for(let part of parts){
+   part=cleanRequirement(part)
+    .replace(/^(?:\d+\+?\s*years?\s+(?:of\s+)?(?:experience\s+)?(?:with|in|using)\s+)/i,"")
+    .replace(/^(?:proven |strong |solid |deep |hands.on |excellent |good |advanced )?(?:experience|proficiency|expertise|familiarity|knowledge|understanding|background|skills?)\s+(?:with|in|of|using|at)\s+/i,"")
+    .replace(/^(?:must have|should have|required to|responsible for|ability to|able to)\s+/i,"")
+    .replace(/^and\s+/i,"");
+   if(/^\b(?:at least|minimum|up to)\s+\d+\b/i.test(part)||/^\d+\s*\+?\s*years?/i.test(part))continue;
+   if(part.length<4||part.length>105||!/[a-z]{3}/i.test(part))continue;
+   const tokens=part.toLowerCase().match(/[a-z][a-z0-9+#/-]*/g)||[];
+   const meaningful=tokens.filter(t=>!stop.test(t));
+   if(meaningful.length<2)continue;
+   // Known dictionary entries already cover the exact short items.
+   if(existing.some(c=>c.aliases?.some(a=>normalize(a)===normalize(part))))continue;
+   if(/^(?:bachelor|master|phd|degree)\b/i.test(part))continue;
+   const responsibility=/^(?:design|build|develop|maintain|implement|lead|manage|deliver|own|coordinate|mentor|optimize|improve|support|create|analyze|analyse|collaborate|communicate|drive|deploy|architect|evaluate)\b/i.test(part);
+   add(part,responsibility?"responsibility":"requirement",[part],preferred,line);
+  }
+ }
+ return result;
+}
+
 export const SAMPLE_JD="Senior Machine Learning Engineer. Requirements: 5+ years of experience in machine learning. Strong Python, SQL, RAG, Generative AI and AWS. Responsibilities: design architectures, deploy models to production, mentor engineers and collaborate with cross-functional teams. Bachelor's degree in Computer Science preferred. Experience in financial services is desirable.";
 export const SAMPLE=[
 {name:"Alex Morgan",resume:"Senior Machine Learning Engineer with 7 years of experience in machine learning. Built RAG and generative AI systems using Python and SQL. Designed architectures and deployed models to production on AWS. Mentored engineers in cross-functional teams. Bachelor's degree in Computer Science. Worked at a fintech.",linkedin:"Technical lead for production machine learning systems in banking."},
@@ -66,7 +160,7 @@ for(const [label,rule,aliases] of [
 ["Master's degree",/\b(master'?s?|m\.?sc\.?|m\.?eng\.?)\b/i,["master","masters","master's","msc","m.sc","meng"]],
 ["PhD",/\b(ph\.?d\.?|doctorate)\b/i,["phd","ph.d","doctorate"]]
 ])if(rule.test(text))out.push(make(label,"qualification",aliases,2,priorityFor(text,aliases[0])));
-return out.slice(0,35);
+return [...out,...genericCriteria(text,out)].slice(0,70);
 }
 function experienceEvidence(text,min,focus){
 const str=String(text||"");
