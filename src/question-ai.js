@@ -10,6 +10,8 @@ const prohibited=/\b(?:age|date of birth|married|marital status|pregnant|pregnan
 export function validateQuestionDraft(input,requirement){
  const candidate=String(input||"").trim().replace(/\s+/g," ").slice(0,260);
  if(candidate.length<22||candidate.length>230||!candidate.endsWith("?")||prohibited.test(candidate))return null;
+ if(!/^(?:how|what|which|when|where|why|can|could|would|tell me|describe|please describe)\b/i.test(candidate))return null;
+ if(/\b(?:you (?:have|already|built|managed|led|worked|delivered|designed)|your (?:work at|time at|project at))\b/i.test(candidate))return null;
  if(/^(?:what is|define|list)\b/i.test(candidate))return null; // Avoid superficial quizzes in place of experience verification
  if(/\b(?:as an ai|language model|cannot answer|not enough information)\b/i.test(candidate))return null;
  // Require overlap with role terms or source phrase; otherwise could be irrelevant/hallucinated.

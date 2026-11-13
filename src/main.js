@@ -62,7 +62,7 @@ dom("span",{text:"1 · Lowest"}),dom("span",{text:"2 · Low"}),dom("span",{text:
   }catch(error){alertUser("Candidate list cleared in this tab, but browser storage deletion could not be confirmed. Use Privacy & retention to remove saved data before closing.");}
  },"danger",data.candidates.length===0)
 ]);
-uploads.append(drop,batchHeader);for(const c of data.candidates)uploads.append(dom("div",{class:"file"},[dom("span",{text:c.name+" · "+c.filename}),button("Remove",()=>{data.candidates=data.candidates.filter(x=>x.id!==c.id);save();render()},"plain")]));uploads.append(dom("div",{class:"safe",text:"Pilot safety: documents are parsed locally and text is stored in this browser for 24 hours after the latest edit. Use synthetic profiles only; this is not an enterprise-secure database."}),button("View ranked shortlist →",()=>{view="results";render()},"primary full",!data.candidates.length||!data.criteria.length));columns.append(job,uploads);container.append(columns)}
+uploads.append(drop,batchHeader);for(const c of data.candidates)uploads.append(dom("div",{class:"file"},[dom("span",{text:c.name+" · "+c.filename}),button("Remove",()=>{data.candidates=data.candidates.filter(x=>x.id!==c.id);data.selectedIds=selectedIds().filter(id=>id!==c.id);if(data.selected===c.id)data.selected=null;delete data.questionSets?.[c.id+":resume"];delete data.questionSets?.[c.id+":profile"];semanticByCandidate.delete(c.id);save();render()},"plain")]));uploads.append(dom("div",{class:"safe",text:"Pilot safety: documents are parsed locally and text is stored in this browser for 24 hours after the latest edit. Use synthetic profiles only; this is not an enterprise-secure database."}),button("View ranked shortlist →",()=>{view="results";render()},"primary full",!data.candidates.length||!data.criteria.length));columns.append(job,uploads);container.append(columns)}
 
 function renderQuestionEditor(parent,candidate,stage,checks,count){
  data.questionSets??={};
@@ -154,11 +154,11 @@ right.append(dom("h3",{text:"Step 2 · LinkedIn enrichment"}),dom("p",{text:"Pas
 if(chosen.sampleLinkedIn&&!chosen.linkedin){
  right.append(button("Try fictional LinkedIn profile",()=>{
   const original=data.candidates.find(c=>c.id===chosen.id);
-  original.linkedin=original.sampleLinkedIn;
-  save();alertUser("Fictional LinkedIn information added. Review how the evidence changed.");
+  original.linkedin=original.sampleLinkedIn;data.questionSets??={};data.questionSets[original.id+":profile"]=(data.questionSets[original.id+":profile"]||[]).filter(q=>q.source==="Recruiter");
+  save();alertUser("Fictional LinkedIn information added. Review the new evidence and questions.");
  },"secondary"));
 }
-right.append(button("Update LinkedIn assessment",()=>{const original=data.candidates.find(c=>c.id===chosen.id);original.linkedin=li.value.slice(0,20000);save();alertUser("LinkedIn compared with the résumé. Review the new evidence and follow-up questions.")}));if(chosen.linkedin?.trim()){
+right.append(button("Update LinkedIn assessment",()=>{const original=data.candidates.find(c=>c.id===chosen.id);original.linkedin=li.value.slice(0,20000);data.questionSets??={};data.questionSets[original.id+":profile"]=(data.questionSets[original.id+":profile"]||[]).filter(q=>q.source==="Recruiter");save();alertUser("LinkedIn compared with the résumé. Updated profile questions while keeping recruiter-written questions.")}));if(chosen.linkedin?.trim()){
  const delta=profileDelta(chosen,data.criteria),card=dom("div",{class:"profile-delta"});
  card.append(dom("h3",{text:"LinkedIn comparison · What changed after adding LinkedIn?"}),
  dom("p",{text:"Stage 1: CV-only evidence → Stage 2: CV + candidate-provided LinkedIn. This is not verified information, and the original candidate ranking does not change."}),
@@ -186,8 +186,10 @@ right.append(button("Update LinkedIn assessment",()=>{const original=data.candid
  right.append(card);
  const linkedInOnly=delta.newlyEvidenced.map(item=>({label:item.label,kind:item.kind,weight:item.weight,matched:true,source:"LinkedIn",evidence:item.evidence}));
  const outstanding=delta.after.checks.filter(item=>!item.matched);
- const basis=[...linkedInOnly,...outstanding];
- renderQuestionEditor(right,chosen,"profile",basis.length?basis:chosen.base.checks,5);
+ const represented=new Set([...linkedInOnly,...outstanding].map(x=>x.label.toLowerCase()));
+ const otherJobRequirements=chosen.base.checks.filter(c=>!represented.has(c.label.toLowerCase()));
+ const basis=[...linkedInOnly,...outstanding,...otherJobRequirements];
+ renderQuestionEditor(right,chosen,"profile",basis,5);
 }
 right.append(dom("div",{class:"safe",text:"Counts refer to job requirements, not claims proven to be true. LinkedIn is optional, and human review is essential. Nothing here confirms a candidate has or lacks a skill."}));
 right.append(button(selectedIds().includes(chosen.id)?"✓ Selected · Remove from shortlist":"Choose candidate",()=>toggleSelected(chosen.id),selectedIds().includes(chosen.id)?"secondary":"primary"));
