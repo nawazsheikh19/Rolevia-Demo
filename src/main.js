@@ -13,7 +13,7 @@ import "./style.css";
 pdfjs.GlobalWorkerOptions.workerSrc=worker;
 const DB="rolevia-demo",RETENTION_MS=6*60*60*1000,root=document.getElementById("app");
 let data={job:"",criteria:[],candidates:[],selected:null,syntheticConfirmed:false,savedAt:0};
-let view="setup",active=null,notice="",saveTimer;
+let view="setup",active=null,notice="",saveTimer,workspaceEpoch=0;
 const semanticByCandidate=new Map();let semanticBusy=false;let questionAiBusy=false;
 const html=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore("records");r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
@@ -53,6 +53,7 @@ const updateMockJobs=()=>{
 mockRole.addEventListener("change",updateMockJobs);updateMockJobs();
 const chosenMock=()=>mockListing(mockRole.value,mockJob.value);
 function clearCandidateState(){
+ workspaceEpoch++;
  data.candidates=[];data.selectedIds=[];data.selected=null;data.questionSets={};
  semanticByCandidate.clear();active=null;
 }
@@ -134,6 +135,7 @@ const batchHeader=dom("div",{class:"batch-header"},[
   const count=data.candidates.length;
   if(!confirm("Delete all "+count+" candidates, including their uploaded résumé text and LinkedIn details? Your job description and matching criteria will be kept. This cannot be undone."))return;
   clearTimeout(saveTimer);
+  workspaceEpoch++;
   data.candidates=[];data.selected=null;data.selectedIds=[];data.questionSets={};active=null;semanticByCandidate.clear();
   data.savedAt=Date.now();
   try{
@@ -325,6 +327,7 @@ function renderShortlist(container){
   if(!selected.length||!removed)return;
   if(!confirm("Delete "+removed+" unselected candidate(s) and their local CV and LinkedIn data? Retain all "+selected.length+" selected candidates. This cannot be undone."))return;
   clearTimeout(saveTimer);
+  workspaceEpoch++;
   data.candidates=data.candidates.filter(c=>ids.has(c.id));
   data.selectedIds=data.candidates.map(c=>c.id);data.selected=null;
   data.questionSets=Object.fromEntries(Object.entries(data.questionSets||{}).filter(([key])=>[...ids].some(id=>key.startsWith(id+":"))));
@@ -336,7 +339,7 @@ function renderShortlist(container){
 
 function emptyWorkspace(){return {job:"",criteria:[],candidates:[],selected:null,selectedIds:[],questionSets:{},syntheticConfirmed:false,savedAt:0}}
 async function clearWorkspace(){
- clearTimeout(saveTimer);saveTimer=null;semanticByCandidate.clear();active=null;
+ clearTimeout(saveTimer);saveTimer=null;workspaceEpoch++;semanticByCandidate.clear();active=null;
  // Clear visible in-memory applicant data, then await IndexedDB transaction commit.
  data=emptyWorkspace();view="setup";
  try{
@@ -365,10 +368,13 @@ async function parseFile(file){if(!file)throw Error("Choose a document.");if(fil
 async function upload(files){
  if(!data.syntheticConfirmed){alertUser("Before uploading, confirm that all CVs are fictional and contain no real personal data.");return}
  const {selected,unsupported,overLimit}=selectResumeFiles(files,Math.max(0,30-data.candidates.length));
+ const uploadEpoch=workspaceEpoch;
  let ok=0,errors=[];
  for(const file of selected){
+  if(uploadEpoch!==workspaceEpoch)return;
   try{
    const resume=await parseFile(file);
+   if(uploadEpoch!==workspaceEpoch)return; // Deletion or workspace replacement occurred during parsing.
    data.candidates.push({
     id:crypto.randomUUID(),
     name:file.name.replace(/\.[^.]+$/,"").replace(/[_-]+/g," ").slice(0,100),
