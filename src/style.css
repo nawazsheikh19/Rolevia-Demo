@@ -10,3 +10,13 @@
 .group-summary{display:flex;justify-content:space-between;gap:14px;border-bottom:1px solid #e7edeb;padding:9px 2px;font-size:12px}
 .group-summary span{font-weight:700;color:#078172}
 @media(max-width:490px){.delta-counts{grid-template-columns:1fr}}
+
+/* Optional AI review: intentionally separate from the scored requirement evidence */
+.semantic-panel{border:1px solid #d5e4f6;border-radius:12px;background:#f5f9ff;padding:17px;margin:17px 0}
+.semantic-panel h3{color:#23527c}
+.semantic-panel p{font-size:12px}
+.semantic-lead{border-left:3px solid #548fb9;background:white;border-radius:6px;padding:12px;margin:10px 0}
+.semantic-lead strong,.semantic-lead small{display:block}
+.semantic-lead small{color:#65849d;font-size:11px;margin-top:5px}
+.semantic-lead p{color:#435c70;margin:6px 0}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #64d6c7;outline-offset:2px}
