@@ -107,3 +107,59 @@ export function profileVerificationQuestions(delta,{limit=4}={}){
    stage:"LinkedIn-only — verify independently"};
  });
 }
+
+/**
+ * Guaranteed question availability: for every requested slot choose an unused
+ * requirement-grounded variant. No speculative candidate achievements.
+ */
+export function alternativeQuestion(checks,existing=[],stage="resume",attempt=0){
+ const ordered=[...(checks||[])].sort(byPriority);
+ const used=new Set(existing.map(q=>String(q.text||"").trim().toLowerCase()));
+ if(!ordered.length){
+  // Neutral, non-evaluative prompts when the JD has no extractable criteria.
+  const prompts=[
+   "Which responsibilities from this job description align most closely with your previous work?",
+   "What example from your previous work would help us understand your approach to this role?",
+   "Which part of the advertised role would you need to learn more about before starting?",
+   "What would you ask the team to clarify about the responsibilities in this job description?",
+   "What recent work are you proud of that you believe is relevant to this role?",
+   "How would you describe the type of work you most enjoy in relation to this position?"
+  ];
+  const eligible=prompts.find(p=>!used.has(p.toLowerCase()))||prompts[attempt%prompts.length];
+  return {text:eligible,requirement:"Role discussion",priority:1,category:"general",source:"Job description",status:"Open-ended"};
+ }
+ for(let turn=0;turn<Math.max(ordered.length*30,30);turn++){
+  const c=ordered[(attempt+turn)%ordered.length];
+  const base=questionFor(c);
+  const label=clean(c.label),k=base.category,variant=Math.floor((attempt+turn)/ordered.length)%10;
+  const prefix=stage==="profile"?"The profile additionally mentions ":"The job calls for ";
+  const templates=[
+   base.text,
+   `For ${label}, what actual experience would you choose to discuss and why?`,
+   `What was your most recent responsibility connected to ${label}?`,
+   `Can you walk me through a real situation related to ${label}, without assuming you have direct experience?`,
+   `Which relevant task involving ${label} required the most collaboration, and what was your contribution?`,
+   `What would you want to clarify about ${label} before taking on this role?`,
+   `What is one lesson from previous work that you would bring to ${label}?`,
+   `Could you give an example that demonstrates your understanding of ${label} in practice?`,
+   `What was the result of your closest experience with ${label}, and how did you know?`,
+   `When thinking about ${label}, which previous role gave you the most relevant preparation?`
+  ];
+  const text=templates[variant];
+  if(!used.has(text.toLowerCase()))return {...base,text,requirement:c.label,category:k,priority:priorityValue(c),stage,source:"Requirement-based draft"};
+ }
+ // The available requirement is still presented as an unverified question.
+ const c=ordered[attempt%ordered.length];
+ const label=clean(c.label);
+ return {...questionFor(c),text:`Could you describe an example relevant to ${label} and explain your personal contribution?`,requirement:c.label,stage};
+}
+export function fillQuestionSet(checks,existing=[],count=6,stage="resume",seed=0){
+ const out=existing.filter(q=>q&&typeof q.text==="string").slice(0,count);
+ let i=0;
+ while(out.length<count&&i<200){
+  const next=alternativeQuestion(checks,out,stage,seed+i);
+  if(!out.some(q=>q.text.toLowerCase()===next.text.toLowerCase()))out.push(next);
+  i++;
+ }
+ return out.slice(0,count);
+}
