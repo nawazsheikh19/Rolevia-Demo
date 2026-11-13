@@ -8,6 +8,7 @@ import {draftInterviewQuestion,questionModelError,resetQuestionModel} from "./qu
 import {semanticLeads} from "./semantic.js";
 import {SCENARIOS} from "./scenarios.js";
 import {MOCK_CATALOG,mockListing} from "./mock-catalog.js";
+import {selectResumeFiles} from "./upload-utils.js";
 import "./style.css";
 pdfjs.GlobalWorkerOptions.workerSrc=worker;
 const DB="rolevia-demo",RETENTION_MS=6*60*60*1000,root=document.getElementById("app");
@@ -16,7 +17,16 @@ let view="setup",active=null,notice="",saveTimer;
 const semanticByCandidate=new Map();let semanticBusy=false;let questionAiBusy=false;
 const html=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore("records");r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
-async function database(mode,record){const db=await openDB();return new Promise((resolve,reject)=>{const tx=db.transaction("records",mode==="read"?"readonly":"readwrite");const store=tx.objectStore("records");const r=mode==="read"?store.get("workspace"):mode==="delete"?store.delete("workspace"):store.put(record,"workspace");let result; r.onsuccess=()=>{result=r.result};tx.oncomplete=()=>{db.close();resolve(result)};tx.onerror=()=>{db.close();reject(tx.error||new Error("Storage transaction failed"))};tx.onabort=()=>{db.close();reject(tx.error||new Error("Storage transaction aborted"))}})}
+async function databaseTransaction(mode,record){const db=await openDB();return new Promise((resolve,reject)=>{const tx=db.transaction("records",mode==="read"?"readonly":"readwrite");const store=tx.objectStore("records");const r=mode==="read"?store.get("workspace"):mode==="delete"?store.delete("workspace"):store.put(record,"workspace");let result; r.onsuccess=()=>{result=r.result};tx.oncomplete=()=>{db.close();resolve(result)};tx.onerror=()=>{db.close();reject(tx.error||new Error("Storage transaction failed"))};tx.onabort=()=>{db.close();reject(tx.error||new Error("Storage transaction aborted"))}})}
+let storageMutationQueue=Promise.resolve();
+function database(mode,record){
+ if(mode==="read")return databaseTransaction(mode,record);
+ // Serialize writes and deletions so a pending save cannot restore deleted CVs.
+ const action=()=>databaseTransaction(mode,record);
+ const task=storageMutationQueue.then(action,action);
+ storageMutationQueue=task.catch(()=>{});
+ return task;
+}
 function save(){clearTimeout(saveTimer);saveTimer=setTimeout(async()=>{data.savedAt=Date.now();try{await database("write",{...data,expires:data.savedAt+RETENTION_MS})}catch{notice="This browser blocked local storage. Data will not persist.";render()}},250)}
 function alertUser(s){notice=s;render()}
 function selectedIds(){return Array.isArray(data.selectedIds)?data.selectedIds:(data.selected?[data.selected]:[])}
@@ -102,7 +112,22 @@ uploads.append(dom("label",{class:"synthetic-consent"},[
  ackInput,dom("span",{text:"I confirm the uploaded CVs are fictional or synthetic and contain no real applicant personal information."})
 ]));
 uploads.append(dom("p",{class:"muted",text:"Public proof of concept only. Do not upload real applicant records, confidential job documents or sensitive personal information."}));
-const fileinput=dom("input",{type:"file",accept:".pdf,.docx,.txt",multiple:"",class:"control"});fileinput.onchange=()=>upload([...fileinput.files]);const drop=dom("div",{class:"dropzone"},[dom("strong",{text:"Upload multiple CVs"}),dom("p",{text:"PDF · DOCX · TXT · Max 30 candidates"}),fileinput]);drop.ondragover=e=>e.preventDefault();drop.ondrop=e=>{e.preventDefault();upload([...e.dataTransfer.files])};const batchHeader=dom("div",{class:"batch-header"},[
+const fileinput=dom("input",{type:"file",accept:".pdf,.docx,.txt",multiple:"",class:"control","aria-label":"Choose individual resume files"});
+fileinput.onchange=async()=>{await upload([...fileinput.files]);fileinput.value=""};
+const folderInput=dom("input",{type:"file",webkitdirectory:"",directory:"",multiple:"",class:"control","aria-label":"Choose a folder containing resumes"});
+folderInput.onchange=async()=>{await upload([...folderInput.files]);folderInput.value=""};
+const drop=dom("div",{class:"dropzone"},[
+ dom("strong",{text:"Add fictional candidate resumes"}),
+ dom("p",{text:"Choose individual PDF, DOCX or TXT files, or a whole folder (including nested folders). Up to 30 candidates, 5MB per file."}),
+ dom("div",{class:"upload-choices"},[
+  field("Upload files",fileinput),
+  field("Upload folder",folderInput)
+ ]),
+ dom("small",{text:"Folder selection works in current Chrome and Edge browsers. Unsupported files are skipped. Folder paths are not saved."})
+]);
+drop.ondragover=e=>e.preventDefault();
+drop.ondrop=e=>{e.preventDefault();upload([...e.dataTransfer.files])};
+const batchHeader=dom("div",{class:"batch-header"},[
  dom("h3",{text:"Candidate batch ("+data.candidates.length+")"}),
  button("Delete entire batch",async()=>{
   if(!data.candidates.length)return;
@@ -304,7 +329,7 @@ function renderShortlist(container){
   data.selectedIds=data.candidates.map(c=>c.id);data.selected=null;
   data.questionSets=Object.fromEntries(Object.entries(data.questionSets||{}).filter(([key])=>[...ids].some(id=>key.startsWith(id+":"))));
   semanticByCandidate.clear();active=data.candidates[0]?.id||null;data.savedAt=Date.now();
-  try{await database("write",{...data,expires:data.savedAt+DAY});alertUser("Deleted "+removed+" unselected candidates; retained "+selected.length+".")}
+  try{await database("write",{...data,expires:data.savedAt+RETENTION_MS});alertUser("Deleted "+removed+" unselected candidates; retained "+selected.length+".")}
   catch{alertUser("Cleared unselected candidates in the current tab, but storage persistence could not be confirmed.")}
  },"danger",!selected.length||selected.length===list.length));
 }
@@ -339,7 +364,26 @@ function renderPrivacy(container){
 async function parseFile(file){if(!file)throw Error("Choose a document.");if(file.size>5*1024*1024)throw Error("File exceeds 5MB.");const ext=file.name.split(".").pop().toLowerCase();if(!["txt","pdf","docx"].includes(ext))throw Error("Only PDF, DOCX and TXT are supported.");let text="";if(ext==="txt")text=await file.text();else if(ext==="docx")text=(await mammoth.extractRawText({arrayBuffer:await file.arrayBuffer()})).value;else{const bytes=new Uint8Array(await file.arrayBuffer());if(new TextDecoder().decode(bytes.slice(0,5))!=="%PDF-")throw Error("Not a valid PDF.");const doc=await pdfjs.getDocument({data:bytes}).promise;if(doc.numPages>35)throw Error("PDF exceeds 35 pages.");for(let i=1;i<=doc.numPages;i++){const page=await doc.getPage(i);text+=(await page.getTextContent()).items.map(x=>x.str||"").join(" ")+"\n"}await doc.destroy()}if(!text.trim())throw Error("No selectable text found. Image-only scans are unsupported.");return text.slice(0,60000)}
 async function upload(files){
  if(!data.syntheticConfirmed){alertUser("Before uploading, confirm that all CVs are fictional and contain no real personal data.");return}
- let ok=0,errors=[];for(const file of files.slice(0,Math.max(0,30-data.candidates.length))){try{const resume=await parseFile(file);data.candidates.push({id:crypto.randomUUID(),name:file.name.replace(/\.[^.]+$/,"").replace(/[_-]+/g," ").slice(0,100),filename:file.name,resume,linkedin:""});ok++}catch(e){errors.push(file.name+": "+e.message)}}save();alertUser(ok+" resume(s) added. "+errors.join("; "))}
+ const {selected,unsupported,overLimit}=selectResumeFiles(files,Math.max(0,30-data.candidates.length));
+ let ok=0,errors=[];
+ for(const file of selected){
+  try{
+   const resume=await parseFile(file);
+   data.candidates.push({
+    id:crypto.randomUUID(),
+    name:file.name.replace(/\.[^.]+$/,"").replace(/[_-]+/g," ").slice(0,100),
+    filename:file.name,resume,linkedin:""
+   });
+   ok++;
+  }catch(e){errors.push(file.name+": "+e.message)}
+ }
+ if(ok)save();
+ const parts=[ok+" fictional resume(s) added."];
+ if(unsupported)parts.push(unsupported+" unsupported or hidden file(s) skipped.");
+ if(overLimit)parts.push(overLimit+" additional supported resume(s) exceeded the 30-candidate limit.");
+ if(errors.length)parts.push(errors.slice(0,4).join("; ")+(errors.length>4?"; "+(errors.length-4)+" more parsing errors":""));
+ alertUser(parts.join(" "));
+}
 async function boot(){
  try{
   const stored=await database("read");
