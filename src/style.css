@@ -34,3 +34,25 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .batch-header h3{margin:0}
 .batch-header .danger{margin:0;font-size:12px;padding:9px 12px;white-space:nowrap}
 @media(max-width:530px){.batch-header{align-items:flex-start;flex-direction:column}.batch-header .danger{width:100%}}
+
+/* Priority & evidence hierarchy: 5 always means most important. */
+.priority-scale{display:flex;gap:5px;flex-wrap:wrap;justify-content:space-between;background:#f2f7fa;border:1px solid #dce7ea;border-radius:9px;padding:9px;margin:12px 0 20px}
+.priority-scale span{font-size:11px;color:#375a69;font-weight:700;padding:3px 2px}
+.criterion-meta{color:#627988;text-transform:capitalize;font-size:11px;font-weight:700;margin:12px 0 2px}
+.questions-panel{padding:17px;margin:19px 0;background:#f9fbfa;border:1px solid #e2ece8;border-radius:12px}
+.questions-panel h3{margin:4px 0 7px}
+.question-row{background:white;border:1px solid #e2eae8;border-radius:9px;margin:9px 0;padding:12px}
+.question-context{font-size:11px;font-weight:750;color:#147e73;text-transform:capitalize}
+.question-text{font-size:13px;color:#243d47;margin:7px 0}
+.question-row small{display:block;font-size:11px;color:#718490;line-height:1.4}
+.question-ai-controls{border-top:1px solid #dee8e5;padding-top:12px;margin-top:15px}
+.ai-question-draft{border-left:4px solid #397cae;background:#eef7fd;padding:11px 13px;margin-top:12px;border-radius:6px}
+.ai-question-draft small{font-size:10px;color:#275d86;font-weight:800}
+.ai-question-draft p{margin:6px 0;color:#254559}
+.stage-comparison{display:grid;grid-template-columns:1fr 26px 1fr;align-items:center;gap:8px;margin:14px 0;padding:12px;background:white;border:1px solid #d4e6e0;border-radius:11px}
+.stage-comparison>div{display:flex;flex-direction:column;gap:3px;text-align:center}
+.stage-comparison small{color:#5d7b77;font-weight:750;font-size:10px}
+.stage-comparison strong{font-size:30px;color:#087b70}
+.stage-comparison span{font-size:11px;color:#6a8281}
+.stage-arrow{text-align:center;font-size:21px!important;color:#089487!important}
+@media(max-width:550px){.priority-scale{justify-content:flex-start;column-gap:13px}.stage-comparison{gap:3px}.stage-comparison strong{font-size:23px}}
