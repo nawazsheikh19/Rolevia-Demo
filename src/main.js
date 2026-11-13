@@ -60,7 +60,7 @@ const fileinput=dom("input",{type:"file",accept:".pdf,.docx,.txt",multiple:"",cl
   const count=data.candidates.length;
   if(!confirm("Delete all "+count+" candidates, including their uploaded résumé text and LinkedIn details? Your job description and matching criteria will be kept. This cannot be undone."))return;
   clearTimeout(saveTimer);
-  data.candidates=[];data.selected=null;data.selectedIds=[];data.questionSets={};data.deletedQuestionTexts={};active=null;semanticByCandidate.clear();
+  data.candidates=[];data.selected=null;data.selectedIds=[];data.questionSets={};active=null;semanticByCandidate.clear();
   data.savedAt=Date.now();
   try{
    await database("write",{...data,expires:data.savedAt+DAY});
@@ -116,7 +116,7 @@ function renderQuestionEditor(parent,candidate,stage,checks,count){
     questionAiBusy=true;alertUser("Preparing optional on-device Qwen model. Standard question alternatives remain available without AI.");
     const basis=checks.find(c=>c.label===q.requirement)||{label:q.requirement||"Job responsibilities",kind:q.category||"requirement",weight:q.priority||1};
     const history=(q.history||[]).concat(q.text).slice(-80);
-    const seen=questions.filter((_,index)=>index!==i).concat(history.map(text=>({text})),data.deletedQuestionTexts[key].map(text=>({text})));
+    const seen=questions.filter((_,index)=>index!==i).concat(history.map(text=>({text})));
     try{
       const result=await draftInterviewQuestion(basis,seen,stage);
       const replacement=result.text&& !seen.some(item=>item.text.toLowerCase()===result.text.toLowerCase())
