@@ -67,22 +67,24 @@ uploads.append(drop,batchHeader);for(const c of data.candidates)uploads.append(d
 function renderQuestionEditor(parent,candidate,stage,checks,count){
  data.questionSets??={};
  const key=candidate.id+":"+stage;
+ const alreadyCreated=Object.prototype.hasOwnProperty.call(data.questionSets,key);
  const current=(data.questionSets[key]||[]).filter(q=>q&&typeof q.text==="string"&&q.text.trim());
- const questions=fillQuestionSet(checks,current,count,stage);
+ const questions=alreadyCreated?current:fillQuestionSet(checks,[],count,stage);
+ questions.sort((a,b)=>Number(b.source==="Recruiter")-Number(a.source==="Recruiter"));
  data.questionSets[key]=questions;
  const panel=dom("div",{class:"questions-panel"});
- panel.append(dom("h3",{text:(stage==="resume"?"CV interview questions":"Post-LinkedIn interview questions")+" ("+count+")"}),
- dom("p",{text:stage==="resume"?"Six job-related, HR-friendly questions. Edit text directly, remove and instantly replace with ×, or request another question.":"Five optional follow-up questions from new LinkedIn claims and outstanding job requirements. They are not proof of a claim."}));
+ panel.append(dom("h3",{text:(stage==="resume"?"CV interview questions":"Post-LinkedIn interview questions")+" ("+questions.length+")"}),
+ dom("p",{text:stage==="resume"?"Begin with six suggested HR-friendly questions. × removes a question without replacement. Another question replaces only that one with a new distinct draft. Your own priority questions appear first.":"Begin with five optional follow-ups from LinkedIn-only claims and the job description. × permanently removes a question from this list; it does not create a replacement."}));
  if(questionModelError())panel.append(dom("p",{class:"safe",text:"The optional AI model cannot currently download: "+questionModelError().slice(0,130)+". Grounded question alternatives work without it."}),
  button("Retry AI download",()=>{resetQuestionModel();alertUser("AI download retry enabled. Question replacements will continue working offline.")},"plain"));
  questions.forEach((q,i)=>{
-  const row=dom("div",{class:"question-row"});
+  const row=dom("div",{class:"question-row"+(q.source==="Recruiter"?" recruiter-priority-question":"")});
   const bar=dom("div",{class:"question-head"});
-  bar.append(dom("strong",{class:"question-context",text:"Q"+(i+1)+" · "+(q.source==="Recruiter"?"Recruiter-written":"Priority "+(q.priority||1)+"/5 · "+(q.category||"role"))}),
+  bar.append(dom("strong",{class:"question-context",text:"Q"+(i+1)+" · "+(q.source==="Recruiter"?"★ Recruiter priority · Your question":"Priority "+(q.priority||1)+"/5 · "+(q.category||"role"))}),
    button("×",()=>{
-    const remaining=questions.filter((_,idx)=>idx!==i);
-    const replacement=alternativeQuestion(checks,remaining.concat([q]),stage,i+remaining.length);
-    questions[i]=replacement;data.questionSets[key]=questions;save();render();
+    questions.splice(i,1);
+    data.questionSets[key]=questions;
+    save();render();
    },"plain"));
   row.append(bar);
   const editor=dom("textarea",{class:"control question-edit","aria-label":"Interview question "+(i+1),rows:"2",maxlength:"450",value:q.text});
@@ -92,36 +94,46 @@ function renderQuestionEditor(parent,candidate,stage,checks,count){
   };
   row.append(editor);
   if(q.context)row.append(dom("small",{text:"Referenced submitted text: "+q.context}));
-  row.append(button(questionAiBusy?"Generating…":"Generate alternative",async()=>{
-   if(questionAiBusy)return;
-   questionAiBusy=true;
-   const target=checks.find(c=>c.label===q.requirement)||checks[i%Math.max(1,checks.length)]||{label:q.requirement||"Role responsibilities",kind:q.category||"requirement",weight:q.priority||1};
-   try{
-    const result=await draftInterviewQuestion(target,questions,stage);
-    if(result.text!==q.text&&!questions.some((item,j)=>j!==i&&item.text.toLowerCase()===result.text.toLowerCase())){
-     questions[i]={...q,text:result.text,source:result.source,requirement:target.label};
-    }else questions[i]=alternativeQuestion(checks,questions,stage,i+9);
-    data.questionSets[key]=questions;save();
-    alertUser(result.modelError?"AI model unavailable. Generated a grounded local alternative instead.":"Generated a draft alternative. Please review its wording and relevance.");
-   }catch(e){
-    questions[i]=alternativeQuestion(checks,questions,stage,i+17);data.questionSets[key]=questions;save();
-    alertUser("Created a local alternative. AI draft unavailable: "+String(e?.message||e).slice(0,80));
-   }finally{questionAiBusy=false;render()}
+  row.append(button("Another question",()=>{
+    const basis=checks.find(c=>c.label===q.requirement)||checks[i%Math.max(1,checks.length)]||{label:q.requirement||"Job responsibilities",kind:q.category||"requirement",weight:q.priority||1};
+    const oldHistory=(q.history||[]).concat(q.text).slice(-80);
+    const seen=questions.filter((_,index)=>index!==i).concat(oldHistory.map(text=>({text})));
+    const replacement=alternativeQuestion([basis],seen,stage,(q.revision||0)+1);
+    questions[i]={...q,...replacement,requirement:basis.label,history:oldHistory,revision:(q.revision||0)+1,source:"Grounded alternative"};
+    data.questionSets[key]=questions;save();render();
+   },"secondary"));
+  row.append(button(questionAiBusy?"AI loading…":"Try LLM draft (experimental)",async()=>{
+    if(questionAiBusy)return;
+    if(!confirm("Download a large free Qwen language model to this browser for optional question drafting? This can use substantial bandwidth, memory and time on some laptops. No résumé or LinkedIn text will be sent in the prompt; only the job requirement. Generated drafts need human review."))return;
+    questionAiBusy=true;
+    const basis=checks.find(c=>c.label===q.requirement)||{label:q.requirement||"Job responsibilities",kind:q.category||"requirement",weight:q.priority||1};
+    const history=(q.history||[]).concat(q.text).slice(-80);
+    const seen=questions.filter((_,index)=>index!==i).concat(history.map(text=>({text})));
+    try{
+      const result=await draftInterviewQuestion(basis,seen,stage);
+      const replacement=result.text&& !seen.some(item=>item.text.toLowerCase()===result.text.toLowerCase())
+        ?result:alternativeQuestion([basis],seen,stage,(q.revision||0)+1);
+      questions[i]={...q,...replacement,history,revision:(q.revision||0)+1,requirement:basis.label};
+      data.questionSets[key]=questions;save();
+      alertUser(result.modelError?"The model could not load. A distinct grounded question was supplied instead.":"New draft ready. Check that it is relevant and does not assume experience.");
+    }catch(e){
+      const replacement=alternativeQuestion([basis],seen,stage,(q.revision||0)+1);
+      questions[i]={...q,...replacement,history,revision:(q.revision||0)+1};
+      data.questionSets[key]=questions;save();alertUser("The AI model was unavailable. A distinct local alternative is ready.");
+    }finally{questionAiBusy=false;render()}
   },"secondary",questionAiBusy));
   panel.append(row);
  });
  const custom=dom("textarea",{class:"control question-edit",placeholder:"Write your own job-related interview question…",rows:"2",maxlength:"450"});
- const slot=dom("select",{class:"control","aria-label":"Question number to replace"});
- questions.forEach((_,i)=>slot.append(dom("option",{value:String(i),text:"Replace question "+(i+1)})));
- panel.append(dom("h3",{text:"Recruiter-supplied questions"}),
- dom("p",{text:"Replace a generated question with one of your own. The six-question CV plan (or five-question profile plan) stays the same size."}),custom,slot,
- button("Add recruiter question",()=>{
-  const q=custom.value.trim();
-  if(q.length<15){alertUser("Enter a meaningful interview question of at least 15 characters.");return}
-  if(/\b(?:date of birth|marital status|pregnan\w*|religion|ethnicity|sexual orientation|disability|race)\b/i.test(q)){alertUser("Please avoid personal or protected-characteristic questions. Keep questions job-related.");return}
-  const i=Number(slot.value)||0;
-  questions[i]={...questions[i],text:q,source:"Recruiter",context:""};data.questionSets[key]=questions;save();alertUser("Recruiter question added to the interview plan.");
- },"secondary"));
+ panel.append(dom("h3",{text:"Add a recruiter priority question"}),dom("p",{text:"Your question will be added as a highlighted item at the top. It will not replace or erase any suggested questions."}),custom,
+ button("★ Add priority question",()=>{
+  const val=custom.value.trim();
+  if(val.length<15){alertUser("Please enter a meaningful job-related interview question.");return}
+  if(/\b(?:date of birth|marital status|pregnan\w*|religion|ethnicity|sexual orientation|disability|race)\b/i.test(val)){alertUser("Check the question for potentially discriminatory or protected-characteristic topics.");return}
+  if(questions.some(q=>q.text.toLowerCase()===val.toLowerCase())){alertUser("This question already exists in the plan.");return}
+  questions.unshift({text:val,source:"Recruiter",category:"recruiter priority",priority:5,requirement:"Recruiter-authored"});
+  data.questionSets[key]=questions;save();alertUser("Priority question added at the top of the interview plan.");
+ },"primary"));
  parent.append(panel);
 }
 
