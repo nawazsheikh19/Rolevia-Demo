@@ -69,3 +69,13 @@ test('example workspaces cover multiple industries',()=>{
   assert.ok(scenario.candidates.every(c=>c.resume&&c.name),key);
  }
 });
+
+test('matches strong related wording but flags it for verification',()=>{
+ const criteria=[{label:'Build weekly inventory reports',kind:'responsibility',aliases:['Build weekly inventory reports'],weight:3}];
+ const c=assess({resume:'Built weekly inventory reports in a regional warehouse.'},criteria).checks[0];
+ assert.equal(c.matched,true);assert.match(c.matchMethod,/verify/);
+});
+test('unrelated words do not produce speculative responsibility evidence',()=>{
+ const criteria=[{label:'Analyze account health and identify churn risks',kind:'responsibility',aliases:['Analyze account health and identify churn risks'],weight:3}];
+ assert.equal(assess({resume:'Built a warehouse inventory report.'},criteria).checks[0].matched,false);
+});
