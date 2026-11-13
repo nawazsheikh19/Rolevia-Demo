@@ -1,7 +1,7 @@
 /**
- * Optional browser-local question rewriting with a small FLAN-T5 model.
+ * Optional browser-local question rewriting with a Qwen2.5-0.5B instruct language model.
  * Generated questions are drafts for human editing, never hiring assessments.
- * Uses only a requirement and short source excerpt; never makes an external inference request.
+ * Passes only a sanitized job requirement to on-device inference. No applicant résumé or profile text is provided to the generator.
  */
 import {alternativeQuestion} from "./questions.js";
 let textGenerator;
@@ -26,19 +26,22 @@ export async function draftInterviewQuestion(check,existing=[],stage="resume"){
  if(lastFailure)return fallback();
  try{
  if(!textGenerator)textGenerator=import("@huggingface/transformers")
-  .then(({pipeline})=>pipeline("text2text-generation","Xenova/flan-t5-small",{device:"wasm",dtype:"q8"}))
+  .then(({pipeline})=>pipeline("text-generation","onnx-community/Qwen2.5-0.5B-Instruct",{device:"wasm",dtype:"q4"}))
   .catch(e=>{textGenerator=null;throw e});
  const generate=await textGenerator;
- const excerpt=String(check?.evidence||"").slice(0,180);
- const prompt="Write one short, specific interview question asking for a real work example. "+
- "Do not invent achievements. Avoid personal characteristics. Job requirement: "+label+
- ". "+(excerpt?"Candidate document excerpt: "+excerpt+". ":"No documented example provided. ")+
- "Ask what they personally did and what resulted. Question:";
- const result=await generate(prompt,{max_new_tokens:75,do_sample:false});
- const raw=result?.[0]?.generated_text||"";
+ // The model sees only a short job requirement, never a candidate CV or LinkedIn profile.
+ const safeLabel=label.replace(/[<>\\r\\n{}]/g," ").replace(/\\s+/g," ").trim().slice(0,105);
+ const avoid=existing.slice(-8).map(q=>String(q.text||"").slice(0,100)).join(" | ");
+ const messages=[
+  {role:"system",content:"You help a human recruiter draft fair, job-related interview questions. Output only ONE open-ended question. Never presume the candidate has done anything. Never ask about personal protected characteristics. No claims about the candidate."},
+  {role:"user",content:"Job requirement: "+safeLabel+". Write an open-ended behavioral or situational question about this requirement. Do not repeat these prior questions: "+avoid.slice(0,550)+". Include the job requirement in the question."}
+ ];
+ const output=await generate(messages,{max_new_tokens:95,temperature:0.8,top_p:0.9,do_sample:true,return_full_text:false});
+ const candidate=output?.[0]?.generated_text;
+ const raw=Array.isArray(candidate)?String(candidate[candidate.length-1]?.content||""):String(candidate||"");
  const question=validateQuestionDraft(raw,label);
  if(!question||existing.some(x=>x.text?.toLowerCase()===question.toLowerCase()))return fallback();
- return {text:question,source:"Local FLAN-T5 draft · human review required"};
+ return {text:question,source:"Qwen 0.5B on-device draft · human review required"};
  }catch(e){lastFailure=String(e?.message||e).slice(0,220);textGenerator=null;return fallback();}
 }
 export function resetQuestionModel(){lastFailure="";textGenerator=null;}
