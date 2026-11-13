@@ -150,6 +150,35 @@ at=lower.indexOf(normalize(alias),at+1);
 }
 return null;
 }
+// Conservative related-wording support for non-technical job duties.
+// Returns a passage to VERIFY, not proof that the person performed the work.
+const insignificant=new Set(["the","and","with","from","into","for","your","our","such","using","including","strong","proven","good","excellent","ability","skills","skill","of","in","to","as","by","a","an","or","is","are","be","experience","experiences","tools","team","teams","such","requirements","required","preferred"]);
+function rootWord(word){
+ const irregular={built:"build",led:"lead",managed:"manage",delivered:"deliver",coordinated:"coordinate",developed:"develop",designed:"design",created:"create",worked:"work",reports:"report",reporting:"report",deliveries:"delivery",relationships:"relationship",renewals:"renewal",customers:"customer",schedules:"schedule",implemented:"implement",improved:"improve",analysis:"analyze",analysed:"analyze",analyzed:"analyze"};
+ if(irregular[word])return irregular[word];
+ if(word.endsWith("ies")&&word.length>5)return word.slice(0,-3)+"y";
+ if(word.endsWith("ing")&&word.length>6)return word.slice(0,-3).replace(/(.)\1$/,"$1");
+ if(word.endsWith("ed")&&word.length>5)return word.slice(0,-2).replace(/(.)\1$/,"$1");
+ if(word.endsWith("s")&&!word.endsWith("ss")&&word.length>4)return word.slice(0,-1);
+ return word;
+}
+function tokens(str){
+ return [...new Set((String(str).toLowerCase().match(/[a-z][a-z0-9]{2,}/g)||[]).filter(w=>!insignificant.has(w)).map(rootWord).filter(w=>!insignificant.has(w)))];
+}
+function relatedWording(text,label){
+ const needed=tokens(label);if(needed.length<2)return null;
+ const raw=String(text||"");
+ const lines=raw.split(/\n+|(?<=[.!?])\s+(?=[A-Z])/).flatMap(x=>x.match(/.{1,350}/g)||[]);
+ for(const line of lines){
+  if(/\b(?:no|never|without|lack(?:s|ing)?|not)\s+(?:\w+\s+){0,3}(?:experience|skills|expertise|ability)\b/i.test(line))continue;
+  const found=new Set(tokens(line));
+  const overlap=needed.filter(t=>found.has(t));
+  // Require at least 2 distinct meaningful terms, and high overlap.
+  if(overlap.length>=2 && overlap.length/needed.length>=0.7)return line.replace(/\s+/g," ").trim();
+ }
+ return null;
+}
+
 function make(label,kind,aliases,weight,priority="required",extra={}){return {label,kind,aliases,weight:priority==="preferred"?Math.min(weight,2):weight,priority,...extra}}
 function priorityFor(job,term){
 const line=String(job).split(/[\n.;]+/).find(l=>phrase(l,term));
@@ -178,9 +207,9 @@ return hit?str.slice(Math.max(0,hit.index-35),hit.index+hit[0].length+95).replac
 export function assess(candidate,criteria,useLinkedIn=false){
 const sources=[["Resume",candidate?.resume||""]];if(useLinkedIn&&candidate?.linkedin?.trim())sources.push(["LinkedIn",candidate.linkedin]);
 const checks=(criteria||[]).filter(c=>c?.label?.trim()).map(c=>{
-let evidence=null,source="";
-for(const [name,text] of sources){evidence=c.kind==="experience"?experienceEvidence(text,c.minYears||999,c.experienceFocus):snippet(text,c.aliases?.length?c.aliases:[c.label]);if(evidence){source=name;break}}
-return {label:c.label,kind:c.kind||"skill",priority:c.priority||"required",weight:Number(c.weight)||1,matched:!!evidence,source,evidence:evidence||""};
+let evidence=null,source="",matchMethod="exact phrasing";
+for(const [name,text] of sources){evidence=c.kind==="experience"?experienceEvidence(text,c.minYears||999,c.experienceFocus):snippet(text,c.aliases?.length?c.aliases:[c.label]);if(!evidence&&["responsibility","requirement","custom"].includes(c.kind)){evidence=relatedWording(text,c.label);if(evidence)matchMethod="related wording — verify";}if(evidence){source=name;break}}
+return {label:c.label,kind:c.kind||"skill",priority:c.priority||"required",weight:Number(c.weight)||1,matched:!!evidence,source,matchMethod,evidence:evidence||""};
 });
 const totalWeight=checks.reduce((sum,c)=>sum+c.weight,0),matchedWeight=checks.reduce((sum,c)=>sum+(c.matched?c.weight:0),0);
 const groups={};for(const c of checks){groups[c.kind]??={supported:0,total:0};groups[c.kind].total++;if(c.matched)groups[c.kind].supported++}
