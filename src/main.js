@@ -32,10 +32,13 @@ function render(){root.replaceChildren();const layout=dom("div",{class:"layout"}
 function heading(parent,eyebrow,title,detail){parent.append(dom("div",{class:"eyebrow",text:eyebrow}),dom("h1",{text:title}),dom("p",{class:"intro",text:detail}))}
 function renderSetup(container){heading(container,"01 / ASSESSMENT SETUP","Find the right talent.","Import a role and up to 30 resumes. Review skills, experience, responsibilities, education and industry requirements before comparing candidates.");const mockRole=dom("select",{class:"control mock-role","aria-label":"Mock profession"});
 for(const [key,role] of Object.entries(MOCK_CATALOG))mockRole.append(dom("option",{value:key,text:role.label}));
+mockRole.value=Object.keys(MOCK_CATALOG)[0]||"";
 const mockJob=dom("select",{class:"control mock-job","aria-label":"Mock job listing"});
 const updateMockJobs=()=>{
  mockJob.replaceChildren();
- for(const listing of MOCK_CATALOG[mockRole.value].jobs)mockJob.append(dom("option",{value:listing.id,text:listing.title}));
+ const family=MOCK_CATALOG[mockRole.value]||Object.values(MOCK_CATALOG)[0];
+ for(const listing of family.jobs)mockJob.append(dom("option",{value:listing.id,text:listing.title}));
+ mockJob.value=family.jobs[0]?.id||"";
 };
 mockRole.addEventListener("change",updateMockJobs);updateMockJobs();
 const chosenMock=()=>mockListing(mockRole.value,mockJob.value);
