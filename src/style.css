@@ -74,3 +74,13 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .explain-metric strong{font-size:23px;min-width:35px;text-align:center;color:#087e71}
 .explain-metric p{font-size:12px;color:#435e63;margin:0}
 @media(max-width:600px){.question-head{align-items:flex-start}.shortlist-summary+.columns{grid-template-columns:1fr}.explain-metric{align-items:flex-start}}
+
+/* Recruiter-authored questions are distinguishable and pinned above suggestions. */
+.recruiter-priority-question{background:#fff6dc;border:1px solid #efc35c;box-shadow:0 2px 10px #8c621018}
+.recruiter-priority-question .question-head{border-bottom:1px solid #efdfaa;padding-bottom:9px}
+.recruiter-priority-question .question-context{color:#805408}
+.recruiter-priority-question .question-edit{border-color:#d9ad55;background:#fffdf7}
+.recruiter-priority-question:focus-within{outline:2px solid #dfaa3a;outline-offset:2px}
+.question-head .plain[aria-label^="Remove"]{background:#fff;color:#923640;border:1px solid #edd0d2;min-width:34px;min-height:34px}
+.question-row .secondary{margin-right:8px}
+.questions-panel .primary{margin-top:9px}
